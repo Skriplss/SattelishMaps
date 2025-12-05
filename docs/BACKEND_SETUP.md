@@ -50,12 +50,9 @@ cd backend
 uvicorn app:app --reload --host 0.0.0.0 --port 5000
 ```
 
-> **Note**: Backend работает с данными **Sentinel-5P** (атмосферные показатели):
-> - **NO₂** - діоксид азоту (транспорт/промисловість)
-> - **O₃** - озон (поверхневий озон)
-> - **SO₂** - сірчистий газ (промислові викиди)
-> - **AER_AI** - аерозольний індекс (дим, пил, PM2.5)
-> - **CO** - чадний газ (пожежі, транспорт)
+> **Note**: Backend работает с данными **Sentinel-2** (оптические снимки):
+> - **NDVI** - Normalized Difference Vegetation Index (рослинність)
+> - **NDWI** - Normalized Difference Water Index (вода)
 
 ### 4. Test Backend
 

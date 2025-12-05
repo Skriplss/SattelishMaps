@@ -97,7 +97,7 @@ async def get_satellite_image(image_id: UUID):
 @router.post("/satellite-data/search", response_model=dict)
 async def search_copernicus(request: SatelliteSearchRequest):
     """
-    Search for satellite images in Copernicus API
+    Search for Sentinel-2 satellite images in Copernicus API and save to database
     
     - **date_from**: Start date for search
     - **date_to**: End date for search
@@ -106,20 +106,33 @@ async def search_copernicus(request: SatelliteSearchRequest):
     - **platform**: Satellite platform (default: Sentinel-2)
     """
     try:
-        logger.info(f"Searching Copernicus: {request.date_from} to {request.date_to}")
+        logger.info(f"Searching Copernicus Sentinel-2: {request.date_from} to {request.date_to}")
         
-        # Search in Copernicus
-        products = copernicus_service.search_products(
+        # Search in Copernicus for Sentinel-2
+        products = copernicus_service.search_sentinel2_products(
             area=request.bounds.to_wkt(),
             date_range=(request.date_from, request.date_to),
             cloud_coverage_max=request.cloud_max,
-            platform=request.platform
+            limit=20  # Limit to 20 products for MVP
         )
+        
+        if not products:
+            return success_response(
+                data=[],
+                message="No products found matching criteria",
+                meta={"count": 0}
+            )
+        
+        # Save products to Supabase
+        saved_count = copernicus_service.save_to_supabase(products)
         
         return success_response(
             data=products,
-            message=f"Found {len(products)} products",
-            meta={"count": len(products)}
+            message=f"Found {len(products)} products, saved {saved_count} to database",
+            meta={
+                "count": len(products),
+                "saved": saved_count
+            }
         )
         
     except Exception as e:
