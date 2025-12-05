@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <!-- Кодировка символов (чтобы русский язык отображался правильно) -->
+    <meta charset="UTF-8">
+    
+    <!-- Адаптивность для мобильных устройств -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Название вкладки в браузере -->
+    <title>SattelishMaps - Спутниковая визуализация</title>
+    
+    <!-- Подключаем MapTiler SDK (библиотека для карт) -->
+    <!-- CDN - это когда мы берем библиотеку из интернета, а не скачиваем -->
+    <script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.umd.js"></script>
+    <link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.css" rel="stylesheet" />
+    
+    <!-- Подключаем наши стили (CSS файлы) -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/map.css">
+</head>
+<body>
+    <!-- Шапка сайта -->
+    <header class="header">
+        <div class="logo">
+            <h1>🛰️ SattelishMaps</h1>
+        </div>
+        <nav class="nav">
+            <span>Спутниковая визуализация Sentinel-2.5</span>
+        </nav>
+    </header>
+
+    <!-- Основной контейнер -->
+    <div class="container">
+        <!-- Здесь будет карта -->
+        <!-- id="map" - это уникальный идентификатор, по которому мы найдем этот элемент в JavaScript -->
+        <div id="map"></div>
+        
+        <!-- Контролы карты (кнопки управления) -->
+        <div class="map-controls">
+            <button id="zoom-in" class="control-btn" title="Приблизить">+</button>
+            <button id="zoom-out" class="control-btn" title="Отдалить">-</button>
+        </div>
+        
+        <!-- Индикатор загрузки (будет показываться при загрузке данных) -->
+        <div id="loader" class="loader hidden">
+            <div class="spinner"></div>
+            <p>Загрузка данных...</p>
+        </div>
+    </div>
+
+    <!-- Подключаем наши JavaScript файлы -->
+    <!-- type="module" позволяет использовать современный синтаксис JS (import/export) -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
