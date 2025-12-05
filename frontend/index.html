@@ -58,6 +58,16 @@
                 </div>
 
                 <div class="filter-section">
+                    <label>Satelitná vrstva</label>
+                    <div class="layer-toggle">
+                        <button class="layer-btn" data-layer="ndvi">NDVI</button>
+                        <button class="layer-btn" data-layer="ndwi">NDWI</button>
+                    </div>
+
+
+                </div>
+
+                <div class="filter-section">
                     <label>Cloudiness</label>
                     <input type="range" min="0" max="100" value="20" class="slider" id="cloud-slider">
                     <span class="slider-value" id="cloud-value">20%</span>
@@ -121,8 +131,13 @@
         <p>Načítavanie...</p>
     </div>
 
+    <!-- Legend Container -->
+    <div id="legend-container" class="legend-panel hidden"></div>
+
     <!-- Scripts -->
+    <script src="js/api.js"></script>
     <script src="js/map.js"></script>
+    <script src="js/layers.js"></script>
     <script src="js/main.js"></script>
 </body>
 

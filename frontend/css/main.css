@@ -17,7 +17,7 @@
     /* Light theme */
     --bg-sidebar: #f8f9fa;
     --bg-map: #e5e5e5;
-    --bg-panel: #ffffff;
+    --bg-panel: #F5F5F7;
     --bg-filters: #f0f4f8;
     --text-primary: #2E365A;
     --text-secondary: #6C5E82;
@@ -440,4 +440,85 @@ body {
         left: 10px;
         top: 10px;
     }
+}
+
+/* Segmented Control for Layers */
+.layer-toggle {
+    display: flex;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.layer-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.layer-btn:hover {
+    color: var(--text-primary);
+}
+
+.layer-btn.active {
+    background: var(--bg-panel);
+    color: var(--accent-primary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   LEGEND PANEL
+   ============================================ */
+.legend-panel {
+    position: fixed;
+    bottom: 30px;
+    right: 20px;
+    background: var(--bg-panel);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 999;
+    min-width: 220px;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.legend-panel.hidden {
+    display: none;
+}
+
+.legend-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    margin-right: 10px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legend-label {
+    line-height: 1.2;
 }
