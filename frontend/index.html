@@ -1,56 +1,129 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="sk">
+
 <head>
-    <!-- Кодировка символов (чтобы русский язык отображался правильно) -->
     <meta charset="UTF-8">
-    
-    <!-- Адаптивность для мобильных устройств -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Название вкладки в браузере -->
-    <title>SattelishMaps - Спутниковая визуализация</title>
-    
-    <!-- Подключаем MapTiler SDK (библиотека для карт) -->
-    <!-- CDN - это когда мы берем библиотеку из интернета, а не скачиваем -->
+    <title>SattelishMaps</title>
+
+    <!-- MapTiler SDK -->
     <script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.umd.js"></script>
     <link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.css" rel="stylesheet" />
-    
-    <!-- Подключаем наши стили (CSS файлы) -->
+
+    <!-- Styles -->
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/map.css">
 </head>
-<body>
-    <!-- Шапка сайта -->
-    <header class="header">
-        <div class="logo">
-            <h1>🛰️ SattelishMaps</h1>
-        </div>
-        <nav class="nav">
-            <span>Спутниковая визуализация Sentinel-2.5</span>
-        </nav>
-    </header>
 
-    <!-- Основной контейнер -->
-    <div class="container">
-        <!-- Здесь будет карта -->
-        <!-- id="map" - это уникальный идентификатор, по которому мы найдем этот элемент в JavaScript -->
-        <div id="map"></div>
-        
-        <!-- Контролы карты (кнопки управления) -->
-        <div class="map-controls">
-            <button id="zoom-in" class="control-btn" title="Приблизить">+</button>
-            <button id="zoom-out" class="control-btn" title="Отдалить">-</button>
+<body>
+
+
+    <!-- Left Sidebar -->
+    <aside id="left-panel">
+        <!-- Logo + Date/Time -->
+        <div class="logo-section">
+            <div class="logo">
+                <span class="logo-icon">🛰️</span>
+                <div class="logo-text">
+                    <strong>Satellish</strong><br>
+                    <small>Maps</small>
+                </div>
+            </div>
+            <div class="date-display" id="sidebar-date"></div>
         </div>
-        
-        <!-- Индикатор загрузки (будет показываться при загрузке данных) -->
-        <div id="loader" class="loader hidden">
-            <div class="spinner"></div>
-            <p>Загрузка данных...</p>
+
+        <!-- Menu Button (opens filters) -->
+        <button class="sidebar-btn" id="menu-btn" title="Filtre">
+            <span class="icon">☰</span>
+            <span class="label">Filtre</span>
+        </button>
+
+        <!-- Filters Panel (expands down inside sidebar) -->
+        <div id="filters-panel" class="filters-dropdown">
+            <div class="filters-content">
+                <div class="filter-section">
+                    <label>Časový rozsah</label>
+                    <input type="date" class="filter-input" id="date-from" value="2024-01-01">
+                    <span class="range-separator">→</span>
+                    <input type="date" class="filter-input" id="date-to" value="2024-12-05">
+                </div>
+
+                <div class="filter-section">
+                    <label>Región</label>
+                    <select class="filter-input">
+                        <option>Všetky</option>
+                        <option>Ukraine</option>
+                        <option>Europe</option>
+                    </select>
+                </div>
+
+                <div class="filter-section">
+                    <label>Cloudiness</label>
+                    <input type="range" min="0" max="100" value="20" class="slider" id="cloud-slider">
+                    <span class="slider-value" id="cloud-value">20%</span>
+                </div>
+
+                <button class="apply-filters-btn">Použiť</button>
+            </div>
+        </div>
+
+        <!-- Language Toggle -->
+        <button class="sidebar-btn" id="lang-btn" title="Jazyk">
+            <span class="icon lang-flag">🇸🇰</span>
+            <span class="label" id="lang-label">SK</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button class="sidebar-btn" id="theme-btn" title="Téma">
+            <span class="icon theme-icon">🌙</span>
+            <span class="label">Téma</span>
+        </button>
+
+        <!-- Info Button -->
+        <button class="sidebar-btn" id="info-btn" title="Info">
+            <span class="icon">ℹ️</span>
+            <span class="label">Info</span>
+        </button>
+    </aside>
+
+    <!-- Fullscreen Map -->
+    <div id="map"></div>
+
+    <!-- Date/Time Control Panel (on map, DeepState style) -->
+    <div id="datetime-control">
+        <button class="dt-btn" id="play-btn">▶</button>
+        <button class="dt-btn" id="speed-btn">1x</button>
+        <input type="date" class="dt-date" id="map-date" value="2024-12-05">
+        <button class="dt-nav">◀</button>
+        <button class="dt-nav">▶</button>
+    </div>
+
+    <!-- Zoom Controls -->
+    <div id="zoom-controls">
+        <button id="zoom-in" class="zoom-btn">+</button>
+        <button id="zoom-out" class="zoom-btn">−</button>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" id="close-info">×</button>
+            <h2>SattelishMaps</h2>
+            <p>Vizualizácia satelitných dát Sentinel-2.5</p>
+            <p><strong>Tím:</strong> V-Axis</p>
+            <p><strong>Verzia:</strong> 1.0.0</p>
         </div>
     </div>
 
-    <!-- Подключаем наши JavaScript файлы -->
-    <!-- type="module" позволяет использовать современный синтаксис JS (import/export) -->
-    <script type="module" src="js/main.js"></script>
+    <!-- Loader -->
+    <div id="loader" class="loader hidden">
+        <div class="spinner"></div>
+        <p>Načítavanie...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/map.js"></script>
+    <script src="js/main.js"></script>
 </body>
+
 </html>
