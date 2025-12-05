@@ -11,7 +11,7 @@
 
 ## 🛠 Технологический стек
 - **Backend**: Python (Flask/FastAPI)
-- **Database**: PostgreSQL / MongoDB
+- **Database**: Supabase (PostgreSQL + Auth + Storage)
 - **Frontend**: HTML, CSS, JavaScript (Leaflet.js / OpenLayers для карт)
 - **API**: Copernicus Open Access Hub API
 - **Deployment**: Docker
