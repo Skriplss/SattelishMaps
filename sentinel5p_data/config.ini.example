@@ -1,0 +1,44 @@
+"""
+Пример конфигурационного файла для хранения учетных данных
+ВАЖНО: Не загружай этот файл в Git после заполнения!
+"""
+
+[copernicus]
+# Твои учетные данные Copernicus Data Space
+# Регистрация: https://dataspace.copernicus.eu/
+username = your_username_here
+password = your_password_here
+
+[supabase]
+# Настройки Supabase (опционально)
+# Найди в Project Settings → API
+url = https://your-project.supabase.co
+anon_key = your_anon_key_here
+# Используй только для скриптов на сервере, НЕ в клиентском коде!
+service_role_key = your_service_role_key_here
+
+[search_defaults]
+# Настройки по умолчанию для поиска данных
+# Координаты области поиска (lon_min, lat_min, lon_max, lat_max)
+# Пример: Украина
+area_lon_min = 22.0
+area_lat_min = 44.0
+area_lon_max = 40.0
+area_lat_max = 52.5
+
+# Количество дней для поиска (назад от текущей даты)
+days_back = 7
+
+# Максимальное количество файлов для загрузки
+max_results = 10
+
+[processing]
+# Настройки обработки данных
+# Автоматически создавать визуализации
+create_visualizations = true
+
+# Автоматически экспортировать в JSON
+export_json = true
+
+# Загружать результаты в Supabase
+upload_to_supabase = false
