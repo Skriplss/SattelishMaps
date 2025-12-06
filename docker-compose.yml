@@ -1,0 +1,53 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sattelishmaps-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Environment
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # Server
+      - HOST=0.0.0.0
+      - PORT=8000
+      
+      # Supabase
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      
+      # Copernicus
+      - COPERNICUS_USERNAME=${COPERNICUS_USERNAME}
+      - COPERNICUS_PASSWORD=${COPERNICUS_PASSWORD}
+      
+      # Scheduler
+      - SCHEDULER_ENABLED=${SCHEDULER_ENABLED:-true}
+      - SCHEDULER_INTERVAL_HOURS=${SCHEDULER_INTERVAL_HOURS:-6}
+      - DEFAULT_SEARCH_BOUNDS=${DEFAULT_SEARCH_BOUNDS:-POLYGON((12 48, 16 48, 16 52, 12 52, 12 48))}
+      - DEFAULT_CLOUD_MAX=${DEFAULT_CLOUD_MAX:-30.0}
+      - PROCESS_HISTORICAL_DATA=${PROCESS_HISTORICAL_DATA:-false}
+    
+    volumes:
+      - ./logs:/app/logs
+      - ./downloads:/app/downloads
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - sattelishmaps-network
+
+networks:
+  sattelishmaps-network:
+    driver: bridge

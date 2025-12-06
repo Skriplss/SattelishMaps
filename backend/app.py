@@ -10,7 +10,8 @@ import logging
 from config.settings import settings
 from utils.logger import setup_logging
 from utils.error_handlers import register_exception_handlers
-from api import satellite, statistics
+from api import satellite, statistics, indices
+from scheduler import satellite_scheduler
 
 
 # Setup logging
@@ -26,8 +27,15 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Starting SattelishMaps Backend...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
+    
+    # Start scheduler
+    satellite_scheduler.start()
+    
     yield
+    
+    # Stop scheduler
     logger.info("Shutting down SattelishMaps Backend...")
+    satellite_scheduler.stop()
 
 
 # Create FastAPI app
@@ -59,6 +67,7 @@ register_exception_handlers(app)
 # Register routers
 app.include_router(satellite.router, prefix="/api", tags=["Satellite Data"])
 app.include_router(statistics.router, prefix="/api", tags=["Statistics"])
+app.include_router(indices.router, prefix="/api", tags=["Indices"])
 
 
 # Health check endpoint
@@ -81,3 +90,9 @@ async def root():
         "docs": "/docs" if settings.DEBUG else "Documentation disabled in production",
         "health": "/health"
     }
+
+
+@app.get("/api/scheduler/status", tags=["Scheduler"])
+async def scheduler_status():
+    """Get scheduler status and statistics"""
+    return satellite_scheduler.get_status()

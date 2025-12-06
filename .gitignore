@@ -30,6 +30,16 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Logs
+logs/
+*.log
+
 # Environment variables
 .env
 .env.local

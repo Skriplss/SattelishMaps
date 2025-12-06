@@ -15,10 +15,17 @@ class Settings(BaseSettings):
     
     # Server
     HOST: str = "0.0.0.0"
-    PORT: int = 5000
+    PORT: int = 8000
     
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000", "http://127.0.0.1:8000"]
+    
+    # Scheduler
+    SCHEDULER_ENABLED: bool = True
+    SCHEDULER_INTERVAL_HOURS: int = 6
+    DEFAULT_SEARCH_BOUNDS: str = "POLYGON((12 48, 16 48, 16 52, 12 52, 12 48))"  # Central Europe default
+    DEFAULT_CLOUD_MAX: float = 30.0
+    PROCESS_HISTORICAL_DATA: bool = False
     
     # Supabase
     SUPABASE_URL: str

@@ -250,6 +250,95 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Error generating area summary: {str(e)}")
             raise
+    
+    def insert_ndvi_data(self, data: Dict[str, Any]) -> Dict:
+        """Insert NDVI calculation data"""
+        try:
+            response = self.client.table('ndvi_data')\
+                .insert(data)\
+                .execute()
+            
+            logger.info(f"Inserted NDVI data for image: {data.get('image_id')}")
+            return response.data[0] if response.data else {}
+            
+        except Exception as e:
+            logger.error(f"Error inserting NDVI data: {str(e)}")
+            raise
+    
+    def insert_ndwi_data(self, data: Dict[str, Any]) -> Dict:
+        """Insert NDWI calculation data"""
+        try:
+            response = self.client.table('ndwi_data')\
+                .insert(data)\
+                .execute()
+            
+            logger.info(f"Inserted NDWI data for image: {data.get('image_id')}")
+            return response.data[0] if response.data else {}
+            
+        except Exception as e:
+            logger.error(f"Error inserting NDWI data: {str(e)}")
+            raise
+    
+    def get_ndvi_data(self, image_id: str) -> Optional[Dict]:
+        """Get NDVI data for an image"""
+        try:
+            response = self.client.table('ndvi_data')\
+                .select('*')\
+                .eq('image_id', image_id)\
+                .execute()
+            
+            return response.data[0] if response.data else None
+            
+        except Exception as e:
+            logger.error(f"Error fetching NDVI data for {image_id}: {str(e)}")
+            return None
+    
+    def get_ndwi_data(self, image_id: str) -> Optional[Dict]:
+        """Get NDWI data for an image"""
+        try:
+            response = self.client.table('ndwi_data')\
+                .select('*')\
+                .eq('image_id', image_id)\
+                .execute()
+            
+            return response.data[0] if response.data else None
+            
+        except Exception as e:
+            logger.error(f"Error fetching NDWI data for {image_id}: {str(e)}")
+            return None
+    
+    def get_latest_processed_date(self) -> Optional[str]:
+        """Get the acquisition date of the latest processed image"""
+        try:
+            response = self.client.table('satellite_images')\
+                .select('acquisition_date')\
+                .order('acquisition_date', desc=True)\
+                .limit(1)\
+                .execute()
+            
+            if response.data:
+                return response.data[0].get('acquisition_date')
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error fetching latest processed date: {str(e)}")
+            return None
+    
+    def check_image_has_indices(self, image_id: str) -> Dict[str, bool]:
+        """Check if image has NDVI and NDWI data calculated"""
+        try:
+            has_ndvi = self.get_ndvi_data(image_id) is not None
+            has_ndwi = self.get_ndwi_data(image_id) is not None
+            
+            return {
+                "has_ndvi": has_ndvi,
+                "has_ndwi": has_ndwi,
+                "has_both": has_ndvi and has_ndwi
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking indices for {image_id}: {str(e)}")
+            return {"has_ndvi": False, "has_ndwi": False, "has_both": False}
 
 
 # Singleton instance
