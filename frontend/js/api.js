@@ -20,10 +20,10 @@
 // ============================================
 
 // URL backend API (пока не используется, но будет нужен позже)
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 // Используем ли mock-данные (true = да, false = реальный API)
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 const MOCK_SATELLITE_DATA = [
     {

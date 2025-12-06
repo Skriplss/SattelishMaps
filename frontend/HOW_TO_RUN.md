@@ -24,18 +24,18 @@ const MAPTILER_API_KEY = 'ТВОЙ_API_КЛЮЧ_СЮДА';
 ### Вариант 1: Python (если установлен)
 ```bash
 cd frontend
-python -m http.server 8000
+python -m http.server 3000
 ```
 
-Потом открой в браузере: http://localhost:8000
+Потом открой в браузере: http://localhost:3000
 
 ### Вариант 2: Node.js (если установлен)
 ```bash
 cd frontend
-npx http-server -p 8000
+npx http-server -p 3000
 ```
 
-Потом открой в браузере: http://localhost:8000
+Потом открой в браузере: http://localhost:3000
 
 ### Вариант 3: VS Code Live Server
 1. Установи расширение "Live Server" в VS Code
