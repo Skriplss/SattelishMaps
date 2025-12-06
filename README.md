@@ -1,76 +1,36 @@
+# SattelishMaps
 
-### Этап 1: Настройка инфраструктуры (1-2 часа)
-- [ ] Создать структуру проекта
-- [ ] Настроить Git репозиторий
-- [ ] Создать Docker-окружение
-- [ ] Настроить базу данных
+SattelishMaps is a backend system for automated retrieval and analysis of Sentinel-2 satellite imagery. It calculates vegetation (NDVI) and water (NDWI) indices to monitor environmental changes.
 
-### Этап 2: Backend разработка (3-4 часа)
-- [ ] Интеграция с Copernicus API
-  - [ ] Аутентификация
-  - [ ] Получение данных Sentinel-2.5
-  - [ ] Парсинг метаданных
-- [ ] API endpoints для фронтенда
-  - [ ] GET /api/satellite-data
-  - [ ] GET /api/statistics
-  - [ ] POST /api/search
-- [ ] Сохранение данных в БД
-  - [ ] Схема базы данных
-  - [ ] CRUD операции
+## Features
 
-### Этап 3: Frontend разработка (3-4 часа)
-- [ ] Создание интерактивной карты
-  - [ ] Базовая карта (Leaflet/OpenLayers)
-  - [ ] Отображение спутниковых слоев
-  - [ ] Интерактивные элементы управления
-- [ ] Панель статистики
-  - [ ] Графики и диаграммы
-  - [ ] Фильтры по датам/регионам
-- [ ] UI/UX дизайн
+*   **Automated Data Retrieval**: Fetches new satellite imagery from Copernicus Data Space Ecosystem.
+*   **Index Calculation**: Computes NDVI and NDWI using spectral bands or metadata estimation.
+*   **Geospatial Database**: Stores data in PostgreSQL with PostGIS support.
+*   **REST API**: Provides endpoints for frontend integration and data access.
+*   **Dockerized**: Fully containerized for easy deployment.
 
-### Этап 4: Интеграция и тестирование (1-2 часа)
-- [ ] Соединение Frontend + Backend
-- [ ] Тестирование функционала
-- [ ] Оптимизация производительности
+## Documentation
 
-### Этап 5: Презентация (1 час)
-- [ ] Подготовка демо
-- [ ] Документация
-- [ ] Презентационные материалы
+*   [System Architecture](docs/architecture/001-system-architecture.md)
+*   [Backend Overview](docs/backend/overview.md)
+*   [Scheduler Details](docs/backend/scheduler.md)
+*   [API Reference](docs/api/reference.md)
+*   [Database Schema](docs/database/schema.md)
+*   [Deployment Guide](docs/deployment/docker-setup.md)
 
-## 🚀 Быстрый старт
+## Quick Start
 
-### Установка зависимостей
-```bash
-# Backend
-cd backend
-pip install -r requirements.txt
+1.  **Configure Environment**:
+    ```bash
+    cp .env.example .env
+    # Edit .env with your credentials
+    ```
 
-# Frontend
-cd frontend
-npm install
-```
+2.  **Start Services**:
+    ```bash
+    docker-compose up -d
+    ```
 
-### Запуск проекта
-```bash
-# С помощью Docker
-docker-compose up
-
-# Или локально
-# Backend
-python backend/app.py
-
-# Frontend
-cd frontend && npm start
-```
-
-## 📚 Полезные ссылки
-- [Copernicus Open Access Hub](https://scihub.copernicus.eu/)
-- [Sentinel-2 Documentation](https://sentinel.esa.int/web/sentinel/missions/sentinel-2)
-- [Leaflet.js Documentation](https://leafletjs.com/)
-- [OpenLayers Documentation](https://openlayers.org/)
-
-## 📝 Заметки
-- API ключ Copernicus нужно получить заранее
-- Рекомендуется кэшировать спутниковые данные
-- Использовать асинхронные запросы для больших данных
+3.  **Access API**:
+    Open http://localhost:8000/docs for Swagger UI.
