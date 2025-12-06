@@ -35,6 +35,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./downloads:/app/downloads
+      - ./backend:/app
     
     restart: unless-stopped
     

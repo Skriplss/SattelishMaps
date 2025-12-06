@@ -24,7 +24,7 @@ class CopernicusService:
             self.api = SentinelAPI(
                 settings.COPERNICUS_USERNAME,
                 settings.COPERNICUS_PASSWORD,
-                'https://scihub.copernicus.eu/dhus'
+                'https://catalogue.dataspace.copernicus.eu/odata/v1'
             )
             logger.info("Copernicus API client initialized for Sentinel-2")
         except Exception as e:
@@ -96,8 +96,8 @@ class CopernicusService:
                     'cloud_coverage': float(product_info.get('cloudcoverpercentage', 0)),
                     'footprint': footprint,
                     'center_point': center_point,
-                    'thumbnail_url': f"https://scihub.copernicus.eu/dhus/odata/v1/Products('{product_id}')/Products('Quicklook')/$value",
-                    'download_url': f"https://scihub.copernicus.eu/dhus/odata/v1/Products('{product_id}')/$value",
+                    'thumbnail_url': f"https://catalogue.dataspace.copernicus.eu/odata/v1/Products({product_id})/Products('Quicklook')/$value",
+                    'download_url': f"https://catalogue.dataspace.copernicus.eu/odata/v1/Products({product_id})/$value",
                     'platform': product_info.get('platformname', 'Sentinel-2'),
                     'metadata': {
                         'orbitnumber': product_info.get('orbitnumber'),
