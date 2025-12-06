@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="sk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SattelishMaps</title>
+
+    <!-- MapTiler SDK -->
+    <script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.umd.js"></script>
+    <link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.css" rel="stylesheet" />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/map.css">
+</head>
+
+<body>
+
+
+    <!-- Left Sidebar -->
+    <aside id="left-panel">
+        <!-- Logo + Date/Time -->
+        <div class="logo-section">
+            <div class="logo">
+                <span class="logo-icon">🛰️</span>
+                <div class="logo-text">
+                    <strong>Satellish</strong><br>
+                    <small>Maps</small>
+                </div>
+            </div>
+            <div class="date-display" id="sidebar-date"></div>
+        </div>
+
+        <!-- Menu Button (opens filters) -->
+        <button class="sidebar-btn" id="menu-btn" title="Filtre">
+            <span class="icon">☰</span>
+            <span class="label">Filtre</span>
+        </button>
+
+        <!-- Filters Panel (expands down inside sidebar) -->
+        <div id="filters-panel" class="filters-dropdown">
+            <div class="filters-content">
+                <div class="filter-section">
+                    <label>Časový rozsah</label>
+                    <input type="date" class="filter-input" id="date-from" value="2024-01-01">
+                    <span class="range-separator">→</span>
+                    <input type="date" class="filter-input" id="date-to" value="2024-12-05">
+                </div>
+
+                <div class="filter-section">
+                    <label>Región</label>
+                    <select class="filter-input" id="region-select">
+                        <option value="">Všetky</option>
+                        <option value="bratislava">Bratislava</option>
+                        <option value="kosice">Košice</option>
+                        <option value="presov">Prešov</option>
+                        <option value="zilina">Žilina</option>
+                        <option value="banska-bystrica">Banská Bystrica</option>
+                        <option value="nitra">Nitra</option>
+                        <option value="trnava">Trnava</option>
+                        <option value="trencin">Trenčín</option>
+                        <option value="martin">Martin</option>
+                        <option value="poprad">Poprad</option>
+                    </select>
+                </div>
+
+                <div class="filter-section">
+                    <label>Satelitná vrstva</label>
+                    <div class="layer-toggle">
+                        <button class="layer-btn" data-layer="ndvi">NDVI</button>
+                        <button class="layer-btn" data-layer="ndwi">NDWI</button>
+                    </div>
+
+
+                </div>
+
+                <button class="apply-filters-btn">Použiť</button>
+            </div>
+        </div>
+
+        <!-- Language Toggle -->
+        <button class="sidebar-btn" id="lang-btn" title="Jazyk">
+            <span class="icon lang-flag">
+                <img src="assets/images/sk-flag.png" style="height: 20px;">
+            </span>
+            <span class="label" id="lang-label">SK</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button class="sidebar-btn" id="theme-btn" title="Téma">
+            <span class="icon theme-icon">🌙</span>
+            <span class="label">Téma</span>
+        </button>
+
+        <!-- Info Button -->
+        <button class="sidebar-btn" id="info-btn" title="Info">
+            <span class="icon">ℹ️</span>
+            <span class="label">Info</span>
+        </button>
+    </aside>
+
+    <!-- Fullscreen Map -->
+    <div id="map"></div>
+
+    <!-- Date/Time Control Panel (on map, DeepState style) -->
+    <div id="datetime-control">
+        <button class="dt-btn" id="play-btn">▶</button>
+        <button class="dt-btn" id="speed-btn">1x</button>
+        <input type="date" class="dt-date" id="map-date" value="2024-12-05">
+        <button class="dt-nav">◀</button>
+        <button class="dt-nav">▶</button>
+    </div>
+
+    <!-- Zoom Controls -->
+    <div id="zoom-controls">
+        <button id="zoom-in" class="zoom-btn">+</button>
+        <button id="zoom-out" class="zoom-btn">−</button>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" id="close-info">×</button>
+            <h2>SattelishMaps</h2>
+            <p>Vizualizácia satelitných dát Sentinel-2.5</p>
+            <p><strong>Tím:</strong> V-Axis</p>
+            <p><strong>Verzia:</strong> 1.0.0</p>
+        </div>
+    </div>
+
+    <!-- Loader -->
+    <div id="loader" class="loader hidden">
+        <div class="spinner"></div>
+        <p>Načítavanie...</p>
+    </div>
+
+    <!-- Legend Container -->
+    <div id="legend-container" class="legend-panel hidden"></div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/layers.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
