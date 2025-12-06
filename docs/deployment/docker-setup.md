@@ -15,7 +15,7 @@ This guide describes how to deploy the application using Docker and Docker Compo
 2.  **Create Environment File**:
     Copy `.env.example` to `.env`:
     ```bash
-    cp .env.example .env
+    cp .env .env
     ```
 3.  **Configure `.env`**:
     *   `SUPABASE_URL`: Your project URL.

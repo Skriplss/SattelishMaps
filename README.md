@@ -23,7 +23,7 @@ SattelishMaps is a backend system for automated retrieval and analysis of Sentin
 
 1.  **Configure Environment**:
     ```bash
-    cp .env.example .env
+    cp .env .env
     # Edit .env with your credentials
     ```
 

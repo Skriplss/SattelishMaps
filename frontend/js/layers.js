@@ -106,8 +106,9 @@ class SatelliteLayers {
     clearAll() {
         this.activeLayers.forEach(id => this.removeLayer(id));
     }
+
     /**
-     * Show a specific layer type (ndvi, ndwi, etc.) using real data
+     * Show a specific layer type (ndvi, ndwi) using Vector Data (Coverage Map)
      * @param {string} layerType
      */
     async showLayer(layerType) {
@@ -131,24 +132,27 @@ class SatelliteLayers {
             // 2. Clear old layers
             this.clearAll();
 
-            // 3. Fetch data
+            // 3. Fetch data (Metadata from Backend)
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = 'wait';
 
+            // Calls our Local Backend (which proxies SentinelHub Catalog)
             const data = await window.SatelliteAPI.fetchSatelliteData(bounds, { from: from, to: to });
 
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = '';
 
             if (data && data.length > 0) {
                 // Vector Visualization Strategy
-                // We create a GeoJSON feature collection from the database images
+                // We create a GeoJSON feature collection from the scene metadata
 
                 const features = data.map(scene => {
                     // Determine value based on layer type
                     let value = null;
                     let properties = { ...scene };
 
+                    // TODO: In the future, Backend should return actual cached NDVI/NDWI stats.
+                    // For now, we simulate values or use available props if SentinelHub provided them.
                     if (layerType === 'ndvi') {
-                        value = scene.ndvi_data?.[0]?.ndvi_mean ?? (Math.random() * 0.8); // Fallback to random if not calculated
+                        value = scene.ndvi_data?.[0]?.ndvi_mean ?? (Math.random() * 0.8);
                     } else if (layerType === 'ndwi') {
                         value = scene.ndwi_data?.[0]?.ndwi_mean ?? (Math.random() * 0.8 - 0.4);
                     }
@@ -156,39 +160,12 @@ class SatelliteLayers {
                     properties.value = value;
                     properties.layerType = layerType;
 
-                    // Construct Geometry
-                    // Ideally 'scene.bounds' is GeoJSON. If not, we make a box from metadata or center
-                    // Assuming scene.bounds is not readily parseable, let's make a box around center_point or use map bounds
-                    // For MVP: We will use the MAP BOUNDS or a fixed box if scene.bounds is missing
-
-                    // Simple logic: Create a polygon covering the area
-                    // Use bounds from API request (approximate) or scene specific if available
-                    // We'll create a polygon roughly centered on the center_point
-
-                    let geometry = null;
-                    if (scene.center_point) {
-                        // Parse POINT(lon lat)
-                        // Very basic parsing
-                        try {
-                            const parts = scene.center_point.replace(/[^\d\.\-\s]/g, '').trim().split(/\s+/);
-                            const lng = parseFloat(parts[0]);
-                            const lat = parseFloat(parts[1]);
-                            const d = 0.1; // ~10km box
-                            geometry = {
-                                type: 'Polygon',
-                                coordinates: [[
-                                    [lng - d, lat - d],
-                                    [lng + d, lat - d],
-                                    [lng + d, lat + d],
-                                    [lng - d, lat + d],
-                                    [lng - d, lat - d]
-                                ]]
-                            };
-                        } catch (e) { console.error('Error parsing center', e); }
-                    }
+                    // Geometry Construction
+                    let geometry = scene.geometry; // Use exact geometry from SentinelHub if available
 
                     if (!geometry) {
-                        // Fallback to current viewport bounds (visual hack)
+                        // Fallback geometry if simple point
+                        // ... (bounds logic)
                         const ne = bounds.getNorthEast();
                         const sw = bounds.getSouthWest();
                         geometry = {
@@ -220,7 +197,7 @@ class SatelliteLayers {
                 this.currentScene = data[0]; // For popups
 
             } else {
-                alert('No data found for this date.');
+                console.warn('No satellite data found for this area/date.');
             }
 
         } catch (error) {
@@ -268,8 +245,8 @@ class SatelliteLayers {
                 type: 'fill',
                 source: id,
                 paint: {
-                    'fill-color': fillColor,
-                    'fill-opacity': 0.6,
+                    'fill-color': fillColor, // Use the interpolated color
+                    'fill-opacity': 0.5, // Transparency to see map below
                     'fill-outline-color': '#ffffff'
                 }
             });
