@@ -243,4 +243,16 @@ class SatelliteMap {
             console.error('❌ Error loading Slovakia borders:', error);
         }
     }
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+        console.log('🌓 Toggling theme to:', newTheme);
+        document.documentElement.setAttribute('data-theme', newTheme);
+
+        // User requested to darken the area around Slovakia in dark theme
+        this.setMapStyle(newTheme);
+
+        return newTheme;
+    }
 }

@@ -50,10 +50,18 @@
 
                 <div class="filter-section">
                     <label>Región</label>
-                    <select class="filter-input">
-                        <option>Všetky</option>
-                        <option>Ukraine</option>
-                        <option>Europe</option>
+                    <select class="filter-input" id="region-select">
+                        <option value="">Všetky</option>
+                        <option value="bratislava">Bratislava</option>
+                        <option value="kosice">Košice</option>
+                        <option value="presov">Prešov</option>
+                        <option value="zilina">Žilina</option>
+                        <option value="banska-bystrica">Banská Bystrica</option>
+                        <option value="nitra">Nitra</option>
+                        <option value="trnava">Trnava</option>
+                        <option value="trencin">Trenčín</option>
+                        <option value="martin">Martin</option>
+                        <option value="poprad">Poprad</option>
                     </select>
                 </div>
 
@@ -67,19 +75,15 @@
 
                 </div>
 
-                <div class="filter-section">
-                    <label>Cloudiness</label>
-                    <input type="range" min="0" max="100" value="20" class="slider" id="cloud-slider">
-                    <span class="slider-value" id="cloud-value">20%</span>
-                </div>
-
                 <button class="apply-filters-btn">Použiť</button>
             </div>
         </div>
 
         <!-- Language Toggle -->
         <button class="sidebar-btn" id="lang-btn" title="Jazyk">
-            <span class="icon lang-flag">🇸🇰</span>
+            <span class="icon lang-flag">
+                <img src="assets/images/sk-flag.png" style="height: 20px;">
+            </span>
             <span class="label" id="lang-label">SK</span>
         </button>
 

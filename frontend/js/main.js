@@ -1,50 +1,208 @@
-/*
-   MAIN APP - Custom Layout
-   Left sidebar + filters toggle + map
-*/
+/* main.js */
 
-const MAPTILER_API_KEY = 'zCLzX9B3EgED7gCQmdAo';
-let satelliteMap = null;
-let currentLang = 'SK';
+// Global state
+const MAPTILER_API_KEY = 'zCLzX9B3EgED7gCQmdAo'; // TODO: Replace with your API key
+let currentLang = 'SK'; // 'SK' or 'EN'
 
 // ============================================
-// THEME
+// INITIALIZATION
 // ============================================
-const savedTheme = localStorage.getItem('theme') || 'light';
-document.documentElement.setAttribute('data-theme', savedTheme);
+document.addEventListener('DOMContentLoaded', () => {
+   initApp();
+   initEventListeners();
+});
 
-function updateThemeIcon(theme) {
-   const icon = document.querySelector('.theme-icon');
-   if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
-}
+function initApp() {
+   console.log('🚀 SattelishMaps');
 
-updateThemeIcon(savedTheme);
+   try {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      satelliteMap = new SatelliteMap('map', MAPTILER_API_KEY);
+      satelliteMap.init(currentTheme);
 
-// ============================================
-// DATE/TIME DISPLAY
-// ============================================
-function updateSidebarDate() {
-   const dateEl = document.getElementById('sidebar-date');
-   if (dateEl) {
-      const now = new Date();
-      const formatted = now.toLocaleString('sk-SK', {
-         day: '2-digit',
-         month: '2-digit',
-         year: 'numeric',
-         hour: '2-digit',
-         minute: '2-digit'
-      });
-      dateEl.textContent = formatted;
+      // Инициализация менеджера слоев
+      window.satelliteLayers = new SatelliteLayers(satelliteMap.map);
+
+      // Загружаем тестовые данные после загрузки карты
+      // satelliteMap.map.on('load', async () => {
+      //    console.log('📡 Loading initial satellite data...');
+      //    try {
+      //       // Имитируем поиск для текущей области
+      //       const bounds = satelliteMap.getBounds();
+      //       const data = await SatelliteAPI.fetchSatelliteData(bounds);
+
+      //       if (data && data.length > 0) {
+      //          const scene = data[0]; // Берем первый снимок
+      //          console.log('📸 Displaying scene:', scene.id);
+
+      //          // Добавляем слой RGB (Sentinel-2) c ID 'current-scene'
+      //          // Но не показываем его сразу, чтобы карта была чистой
+      //          // (пользователь сам включит NDVI/NDWI)
+      //       }
+      //    } catch (e) {
+      //       console.error('Error loading satellite layers:', e);
+      //    }
+      // });
+
+      console.log('✅ Ready');
+
+   } catch (error) {
+      console.error('❌ Init error:', error);
    }
 }
 
-// ============================================
-// FILTERS PANEL
-// ============================================
+function initEventListeners() {
+   // Sidebar Menu
+   const menuBtn = document.getElementById('menu-btn');
+   if (menuBtn) {
+      menuBtn.addEventListener('click', toggleFilters);
+   }
+
+   // Language Toggle
+   const langBtn = document.getElementById('lang-btn');
+   if (langBtn) {
+      langBtn.addEventListener('click', toggleLanguage);
+   }
+
+   // Theme Toggle
+   const themeBtn = document.getElementById('theme-btn');
+   if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+         const newTheme = satelliteMap.toggleTheme();
+         // Update icon if needed
+         const icon = themeBtn.querySelector('.icon');
+         if (icon) icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+      });
+   }
+
+   // Info Modal
+   const infoBtn = document.getElementById('info-btn');
+   const closeInfoBtn = document.getElementById('close-info');
+   if (infoBtn) infoBtn.addEventListener('click', showInfo);
+   if (closeInfoBtn) closeInfoBtn.addEventListener('click', hideInfo);
+
+   // Calendar Inputs
+   const dateFrom = document.getElementById('date-from');
+   const dateTo = document.getElementById('date-to');
+   if (dateFrom && dateTo) {
+      dateFrom.addEventListener('change', applyFilters);
+      dateTo.addEventListener('change', applyFilters);
+   }
+
+   // Apply Filters Button
+   const applyBtn = document.querySelector('.apply-filters-btn');
+   if (applyBtn) {
+      applyBtn.addEventListener('click', applyFilters);
+   }
+
+   // Layer Toggles - using the specific logic from before
+   const layerBtns = document.querySelectorAll('.layer-btn');
+   layerBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+         const isAlreadyActive = e.target.classList.contains('active');
+
+         // 1. Deactivate all buttons first
+         layerBtns.forEach(b => b.classList.remove('active'));
+
+         // 2. If it was NOT active, activate it and show layer
+         if (!isAlreadyActive) {
+            e.target.classList.add('active');
+
+            const layerType = e.target.getAttribute('data-layer'); // 'ndvi' or 'ndwi'
+            console.log('Layer selected:', layerType);
+
+            if (window.satelliteLayers) {
+               window.satelliteLayers.showLayer(layerType);
+
+               const legendContainer = document.getElementById('legend-container');
+               if (legendContainer) {
+                  legendContainer.classList.remove('hidden');
+                  legendContainer.innerHTML = window.satelliteLayers.getLegendHTML(layerType);
+               }
+            }
+         } else {
+            // 3. If it WAS active, we just deactivated it above (toggle off)
+            console.log('Layer de-selected');
+            if (window.satelliteLayers) {
+               window.satelliteLayers.clearAll(); // Remove layer
+            }
+            const legendContainer = document.getElementById('legend-container');
+            if (legendContainer) {
+               legendContainer.classList.add('hidden'); // Hide legend
+            }
+         }
+      });
+   });
+
+   // Map Clicks for Popup
+   const mapContainer = document.getElementById('map');
+   // Assuming map instance is global or accessible via satelliteMap.map
+   // But we need to wait for map init. It's done in initApp.
+   // We can attach listener to map object if available, or wait.
+   // Ideally properly structured code would handle this inside Map class or here after init.
+   // For now, let's assume satelliteMap.map is available after a slight delay or we attach it inside initApp.
+   // Actually, better to attach it here if satelliteMap is global.
+   // Map Clicks for Popup
+   if (window.satelliteMap && window.satelliteMap.map) {
+      window.satelliteMap.map.on('click', (e) => {
+         // Check if click is on world-gray-layer (outside Slovakia)
+         const grayFeatures = window.satelliteMap.map.queryRenderedFeatures(e.point, {
+            layers: ['world-gray-layer']
+         });
+
+         if (grayFeatures.length > 0) {
+            console.log('Clicked outside Slovakia');
+            return; // Do nothing
+         }
+
+         // If inside Slovakia (didn't hit gray mask)
+         // Show popup with mock info
+         // Get active layer
+         const activeBtn = document.querySelector('.layer-btn.active');
+         if (activeBtn) {
+            const type = activeBtn.getAttribute('data-layer');
+            let value, category, color;
+
+            // Mock logic to generate realistic values based on type
+            if (type === 'ndvi') {
+               // Random value between -0.2 and 0.8 for mock
+               value = (Math.random() * 1.0 - 0.2).toFixed(2);
+
+               if (value < 0) { category = 'Water/Asphalt'; color = '#D73027'; }
+               else if (value < 0.2) { category = 'Bare Soil'; color = '#FC8D59'; }
+               else if (value < 0.4) { category = 'Sparse Vegetation'; color = '#FEE090'; }
+               else if (value < 0.6) { category = 'Moderate Vegetation'; color = '#41A636'; }
+               else { category = 'Dense Vegetation'; color = '#168043'; }
+
+            } else if (type === 'ndwi') {
+               // Random value between -0.5 and 0.8
+               value = (Math.random() * 1.3 - 0.5).toFixed(2);
+
+               if (value < 0) { category = 'Dry Soil/Asphalt'; color = '#00005C'; }
+               else if (value < 0.2) { category = 'Moderate Moisture'; color = '#0000CD'; }
+               else if (value < 0.5) { category = 'Moist Soil'; color = '#4169E1'; }
+               else { category = 'Water'; color = '#87CEEB'; }
+            }
+
+            new maptilersdk.Popup()
+               .setLngLat(e.lngLat)
+               .setHTML(`
+                        <div style="font-family: sans-serif; padding: 5px; min-width: 150px;">
+                            <h4 style="margin: 0 0 5px; border-bottom: 2px solid ${color}; padding-bottom: 3px;">${type.toUpperCase()} Data</h4>
+                            <p style="margin: 5px 0 0;">Value: <strong>${value}</strong></p>
+                            <p style="margin: 2px 0; font-size: 0.9em; color: #555;">${category}</p>
+                            <p style="margin: 5px 0 0; font-size: 0.8em; color: #999;">Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}</p>
+                        </div>
+                   `)
+               .addTo(window.satelliteMap.map);
+         }
+      });
+   }
+}
+
 function toggleFilters() {
    const panel = document.getElementById('filters-panel');
    const menuBtn = document.getElementById('menu-btn');
-
    panel.classList.toggle('active');
    menuBtn.classList.toggle('active');
 }
@@ -61,20 +219,35 @@ function closeFilters() {
 // ============================================
 function toggleLanguage() {
    currentLang = currentLang === 'SK' ? 'EN' : 'SK';
+
+   const flagSK = "assets/images/sk-flag.png";
+   const flagGB = "data:image/png;base64,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";
+
    const label = document.getElementById('lang-label');
    const flag = document.querySelector('.lang-flag');
 
-   if (label) label.textContent = currentLang;
    if (flag) {
-      flag.textContent = currentLang === 'SK' ? '🇸🇰' : '🇬🇧';
+      // Flag icon (Left) -> Image
+      let img = flag.querySelector('img');
+      if (!img) {
+         img = document.createElement('img');
+         img.style.height = '20px';
+         flag.textContent = '';
+         flag.appendChild(img);
+      }
+      img.src = currentLang === 'SK' ? flagSK : flagGB;
+   }
+
+   if (label) {
+      // Label (Right) -> Text
+      label.textContent = currentLang === 'SK' ? 'SK' : 'ENG';
    }
 
    console.log('Language:', currentLang);
 }
 
-// ============================================
-// INFO MODAL
-// ============================================
+
+
 function showInfo() {
    const modal = document.getElementById('info-modal');
    if (modal) modal.classList.remove('hidden');
@@ -85,310 +258,20 @@ function hideInfo() {
    if (modal) modal.classList.add('hidden');
 }
 
-// ============================================
-// MAP INIT
-// ============================================
-function initApp() {
-   console.log('🚀 SattelishMaps');
+function applyFilters() {
+   const dateFrom = document.getElementById('date-from').value;
+   const dateTo = document.getElementById('date-to').value;
 
-   try {
-      const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-      satelliteMap = new SatelliteMap('map', MAPTILER_API_KEY);
-      satelliteMap.init(currentTheme);
+   console.log('Applying filters:', { dateFrom, dateTo });
 
-      // Инициализация менеджера слоев
-      window.satelliteLayers = new SatelliteLayers(satelliteMap.map);
+   // In real app, we would fetch new data here
+   const bounds = window.satelliteMap.getBounds();
+   console.log('Current Map Bounds:', bounds);
 
-      // Загружаем тестовые данные после загрузки карты
-      satelliteMap.map.on('load', async () => {
-         console.log('📡 Loading initial satellite data...');
-         try {
-            // Имитируем поиск для текущей области
-            const bounds = satelliteMap.getBounds();
-            const data = await SatelliteAPI.fetchSatelliteData(bounds);
-
-            if (data && data.length > 0) {
-               const scene = data[0]; // Берем первый снимок
-               console.log('📸 Displaying scene:', scene.id);
-
-               // Добавляем слой RGB (Sentinel-2) c ID 'current-scene'
-               // Но не показываем его сразу, чтобы карта была чистой
-               // (пользователь сам включит NDVI/NDWI)
-            }
-         } catch (e) {
-            console.error('Error loading satellite layers:', e);
-         }
-      });
-
-      // CLICK EVENT FOR POPUP
-      satelliteMap.map.on('click', (e) => {
-         // Check if any satellite layer is active
-         const activeBtn = document.querySelector('.layer-btn.active');
-         if (!activeBtn) return;
-
-         // Check if clicked inside Slovakia
-         // Strategy: 'world-gray-layer' covers the whole world EXCEPT Slovakia (it's a hole).
-         // So if we hit 'world-gray-layer', we are OUTSIDE.
-         const outsideFeatures = satelliteMap.map.queryRenderedFeatures(e.point, {
-            layers: ['world-gray-layer']
-         });
-
-         if (outsideFeatures.length > 0) {
-            console.log('📍 Clicked outside Slovakia (world-gray-layer hit), ignoring.');
-            return;
-         }
-
-         const layerType = activeBtn.dataset.layer; // 'ndvi' or 'ndwi'
-         const { lng, lat } = e.lngLat;
-
-         // Mock value generation based on layer type
-         let value, color, description;
-
-         if (layerType === 'ndvi') {
-            // Generate random NDVI between -0.2 and 0.8
-            value = (Math.random() * 1.0 - 0.2).toFixed(2);
-
-            if (value < 0) { color = '#D73027'; description = 'Вода/Асфальт'; }
-            else if (value < 0.2) { color = '#FC8D59'; description = 'Голий ґрунт'; }
-            else if (value < 0.4) { color = '#FEE090'; description = 'Рідка зелень'; }
-            else if (value < 0.6) { color = '#41A636'; description = 'Помірна зелень'; }
-            else { color = '#168043'; description = 'Густий ліс'; }
-         } else if (layerType === 'ndwi') {
-            // Generate random NDWI between -0.3 and 0.8
-            value = (Math.random() * 1.1 - 0.3).toFixed(2);
-
-            if (value < 0) { color = '#00005C'; description = 'Сухий ґрунт'; }
-            else if (value < 0.2) { color = '#0000CD'; description = 'Помірна волога'; }
-            else if (value < 0.5) { color = '#4169E1'; description = 'Вологий ґрунт'; }
-            else { color = '#87CEEB'; description = 'Вода'; }
-         }
-
-         if (value) {
-            new maptilersdk.Popup()
-               .setLngLat([lng, lat])
-               .setHTML(`
-                      <div style="text-align: center;">
-                          <div style="font-weight: bold; margin-bottom: 4px;">${layerType.toUpperCase()}</div>
-                          <div style="font-size: 1.2rem; font-weight: 800; color: ${color};">${value}</div>
-                          <div style="font-size: 0.85rem; opacity: 0.8;">${description}</div>
-                      </div>
-                  `)
-               .addTo(satelliteMap.map);
-         }
-      });
-
-      console.log('✅ Ready');
-      window.map = satelliteMap;
-   } catch (error) {
-      console.error('❌', error);
+   // Simulate refresh
+   const activeLayerBtn = document.querySelector('.layer-btn.active');
+   if (activeLayerBtn && window.satelliteLayers) {
+      const layerType = activeLayerBtn.getAttribute('data-layer');
+      window.satelliteLayers.showLayer(layerType);
    }
 }
-
-// ============================================
-// EVENTS
-// ============================================
-document.addEventListener('DOMContentLoaded', () => {
-   console.log('📄 Loading...');
-
-   initApp();
-   updateSidebarDate();
-   setInterval(updateSidebarDate, 60000);
-
-   // Menu button (toggle filters)
-   const menuBtn = document.getElementById('menu-btn');
-   if (menuBtn) {
-      menuBtn.addEventListener('click', toggleFilters);
-   }
-
-   // Language toggle
-   const langBtn = document.getElementById('lang-btn');
-   if (langBtn) {
-      langBtn.addEventListener('click', toggleLanguage);
-   }
-
-   // Theme toggle
-   const themeBtn = document.getElementById('theme-btn');
-   if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-         const current = document.documentElement.getAttribute('data-theme');
-         const newTheme = current === 'dark' ? 'light' : 'dark';
-         document.documentElement.setAttribute('data-theme', newTheme);
-         localStorage.setItem('theme', newTheme);
-         updateThemeIcon(newTheme);
-
-         // Меняем стиль карты
-         if (satelliteMap) {
-            satelliteMap.setMapStyle(newTheme);
-         }
-      });
-   }
-
-   // Info button
-   const infoBtn = document.getElementById('info-btn');
-   if (infoBtn) {
-      infoBtn.addEventListener('click', showInfo);
-   }
-
-   // Close info modal
-   const closeInfo = document.getElementById('close-info');
-   if (closeInfo) {
-      closeInfo.addEventListener('click', hideInfo);
-   }
-
-   // Cloud slider
-   const cloudSlider = document.getElementById('cloud-slider');
-   const cloudValue = document.getElementById('cloud-value');
-   if (cloudSlider && cloudValue) {
-      cloudSlider.addEventListener('input', (e) => {
-         cloudValue.textContent = e.target.value + '%';
-      });
-   }
-
-   // Date controls
-   const dateFrom = document.getElementById('date-from');
-   const dateTo = document.getElementById('date-to');
-
-   // Helper to refresh data when filters change
-   async function applyFilters() {
-      console.log('📅 Date filter changed');
-      const fromDate = dateFrom ? dateFrom.value : null;
-      const toDate = dateTo ? dateTo.value : null;
-
-      console.log(`  Range: ${fromDate} -> ${toDate}`);
-
-      if (window.satelliteMap) {
-         const bounds = window.satelliteMap.getBounds();
-         // Call API with new dates
-         await SatelliteAPI.fetchSatelliteData(bounds, { from: fromDate, to: toDate });
-
-         // If a layer is currently active, "refresh" it to simulate new data
-         const activeBtn = document.querySelector('.layer-btn.active');
-         if (activeBtn) {
-            console.log('🔄 Re-applying filter request for new date...');
-            // In a real app, we would get a NEW tile URL here.
-            // For now, we just log that we requested data for the specific date.
-         }
-      }
-   }
-
-   [dateFrom, dateTo].forEach(input => {
-      if (input) {
-         input.addEventListener('change', applyFilters);
-      }
-   });
-
-   // Top header date (optional sync)
-   const mapDate = document.getElementById('map-date');
-   if (mapDate) {
-      mapDate.addEventListener('change', (e) => {
-         console.log('📅 Header Date changed:', e.target.value);
-      });
-   }
-
-   // ===================================
-   // LEGEND DATA
-   // ===================================
-   const LEGENDS = {
-      ndvi: {
-         title: 'NDVI (Vegetation Index)',
-         items: [
-            { color: '#D73027', label: '< 0: Вода, асфальт' },
-            { color: '#FC8D59', label: '0 – 0.2: Голий ґрунт, забудова' },
-            { color: '#FEE090', label: '0.2 – 0.4: Рідка рослинність' },
-            { color: '#41A636', label: '0.4 – 0.6: Помірна рослинність' },
-            { color: '#168043', label: '> 0.6: Густий ліс, парки' }
-         ]
-      },
-      ndwi: {
-         title: 'NDWI (Water Index)',
-         items: [
-            { color: '#00005C', label: '< 0: Сухий ґрунт' },
-            { color: '#0000CD', label: '0 – 0.2: Помірна вологість' },
-            { color: '#4169E1', label: '0.2 – 0.5: Вологий ґрунт' },
-            { color: '#87CEEB', label: '> 0.5: Вода (озера, річки)' }
-         ]
-      }
-   };
-
-   function updateLegend(layerType) {
-      const container = document.getElementById('legend-container');
-      if (!container) return;
-
-      if (!layerType || !LEGENDS[layerType]) {
-         container.classList.add('hidden');
-         return;
-      }
-
-      const data = LEGENDS[layerType];
-      let html = `<div class="legend-title">${data.title}</div>`;
-
-      data.items.forEach(item => {
-         html += `
-               <div class="legend-item">
-                   <div class="legend-color" style="background: ${item.color}"></div>
-                   <div class="legend-label">${item.label}</div>
-               </div>
-           `;
-      });
-
-      container.innerHTML = html;
-      container.classList.remove('hidden');
-   }
-
-   // ===================================
-   // LAYER SWITCHING (NDVI / NDWI)
-   // ===================================
-   const layerBtns = document.querySelectorAll('.layer-btn');
-
-   layerBtns.forEach(btn => {
-      btn.addEventListener('click', async () => {
-         const layerType = btn.dataset.layer; // 'ndvi' or 'ndwi'
-         const isActive = btn.classList.contains('active');
-
-         // 1. UI Update
-         // Сбрасываем все кнопки
-         layerBtns.forEach(b => b.classList.remove('active'));
-
-         if (isActive) {
-            // Если фильтр был активен - выключаем его (возврат к обычному виду)
-            console.log('🔄 Filter disabled, returning to normal view');
-            updateLegend(null); // Hide legend
-
-            if (window.satelliteLayers) {
-               window.satelliteLayers.removeLayer('current-scene');
-            }
-         } else {
-            // Если фильтр не был активен - включаем его
-            btn.classList.add('active');
-            console.log('🔄 Enabling filter:', layerType);
-            updateLegend(layerType); // Show legend
-
-            // 2. Map Update
-            if (window.satelliteLayers && window.satelliteMap) {
-               try {
-                  const bounds = window.satelliteMap.getBounds();
-                  const data = await SatelliteAPI.fetchSatelliteData(bounds);
-
-                  if (data && data.length > 0) {
-                     const scene = data[0];
-                     const url = scene.bands[layerType];
-
-                     if (url) {
-                        window.satelliteLayers.addRasterLayer(
-                           'current-scene',
-                           url,
-                           { opacity: 0.8 } // Default opacity
-                        );
-                        console.log('✅ Filter ' + layerType + ' applied');
-                     }
-                  }
-               } catch (e) {
-                  console.error('❌ Error applying filter:', e);
-               }
-            }
-         }
-      });
-   });
-});
-
-console.log('✅ Loaded verified 6 (Legend Added)');
