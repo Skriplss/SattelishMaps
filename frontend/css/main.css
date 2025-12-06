@@ -85,45 +85,6 @@ body {
     box-shadow: var(--shadow);
 }
 
-/* Logo Section */
-.logo-section {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-}
-
-.logo-icon {
-    font-size: 2rem;
-}
-
-.logo-text {
-    font-size: 0.9rem;
-    line-height: 1.2;
-    color: var(--text-primary);
-}
-
-.logo-text strong {
-    font-weight: 700;
-    display: block;
-}
-
-.logo-text small {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
-.date-display {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-top: 8px;
-}
 
 /* Sidebar Buttons */
 .sidebar-btn {
@@ -161,6 +122,17 @@ body {
     color: white;
 }
 
+/* Bottom Buttons Container */
+.sidebar-bottom-buttons {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+
 /* ============================================
    FILTERS PANEL (Dropdown inside sidebar)
    ============================================ */
@@ -175,7 +147,7 @@ body {
 }
 
 .filters-dropdown.active {
-    max-height: 600px;
+    max-height: 300px;
     overflow-y: auto;
 }
 
@@ -194,6 +166,14 @@ body {
     color: var(--text-primary);
     margin-bottom: 8px;
 }
+
+.filter-placeholder {
+    padding: 15px 0;
+    text-align: center;
+    border-top: 1px dashed var(--border-color);
+    margin-top: 10px;
+}
+
 
 .filter-input {
     width: 100%;
@@ -258,12 +238,51 @@ body {
     background: var(--bg-panel);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 10px 15px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 998;
+    box-shadow: var(--shadow);
+}
+
+/* Logo in datetime control */
+.dt-logo {
     display: flex;
     align-items: center;
     gap: 8px;
-    z-index: 998;
-    box-shadow: var(--shadow);
+    padding-right: 12px;
+    border-right: 1px solid var(--border-color);
+}
+
+.dt-logo-img {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+}
+
+.dt-logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.dt-logo-text strong {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.dt-logo-text small {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+/* Controls group */
+.dt-controls-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .dt-btn,
@@ -445,11 +464,12 @@ body {
 /* Segmented Control for Layers */
 .layer-toggle {
     display: flex;
+    flex-direction: column;
     background: var(--bg-sidebar);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 2px;
-    gap: 2px;
+    gap: 5px;
 }
 
 .layer-btn {
@@ -491,6 +511,11 @@ body {
     font-size: 0.85rem;
     color: var(--text-primary);
     border: 1px solid var(--border-color);
+    transition: right 0.3s ease-in-out;
+}
+
+body.stats-open .legend-panel {
+    right: 400px;
 }
 
 .legend-panel.hidden {
@@ -521,4 +546,284 @@ body {
 
 .legend-label {
     line-height: 1.2;
+}
+
+/* Utility */
+.hidden {
+    display: none !important;
+}
+
+/* Area Selection Cursor */
+#area-selection-cursor {
+    position: fixed;
+    width: 100px;
+    height: 100px;
+    border: 2px dashed #fff;
+    background-color: rgba(255, 255, 255, 0.2);
+    pointer-events: none;
+    /* Allows clicking through to the map */
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    /* Center on cursor */
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    /* Dim the rest of the screen */
+    /* Clip path to show map only inside the box - optional, but cool effect */
+    /* clip-path: polygon(0% 0%, 0% 100%, 25% 100%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 100%, 100% 100%, 100% 0%); */
+}
+
+/* When selection mode is active, hide default cursor on map */
+.selection-mode {
+    cursor: none;
+}
+
+/* Statistics Panel */
+.stats-panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    /* Hidden by default */
+    width: 380px;
+    height: 100vh;
+    background: var(--bg-sidebar);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    transition: right 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    color: var(--text-primary);
+}
+
+.stats-panel.open {
+    right: 0;
+}
+
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.stats-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: var(--text-primary);
+}
+
+.stats-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.date-input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.date-input-group label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.date-input-group input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 5px;
+    border-radius: 4px;
+}
+
+/* Comparison Controls */
+.comparison-section {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.compare-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.compare-btn:hover {
+    background: var(--bg-panel);
+    border-color: var(--accent-primary);
+}
+
+.compare-dropdown {
+    /* position: relative; Default is fine */
+    width: 100%;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease;
+    background: var(--bg-sidebar);
+    /* Solid background */
+    border-radius: 8px;
+    opacity: 0;
+    margin-top: 0;
+    /* z-index: 100; Not needed for static */
+    /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); Optional for accordion */
+}
+
+.compare-dropdown.open {
+    max-height: 200px;
+    /* Enough for content */
+    opacity: 1;
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.compare-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.compare-option:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.compare-placeholder {
+    padding: 6px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    border-top: 1px dashed var(--border-color);
+    margin-top: 5px;
+}
+
+.chart-container {
+    flex: 1;
+    min-height: 250px;
+    max-height: 300px;
+    margin-bottom: 20px;
+    /* background: rgba(0, 0, 0, 0.2); Removed per user request */
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.ai-analysis-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.ai-analysis-container h4 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    color: #a0a0ff;
+    /* AI-ish color */
+}
+
+.ai-text-box {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Export Section */
+.export-section {
+    margin-top: 20px;
+    position: relative;
+}
+
+.export-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.export-btn:hover {
+    background: var(--accent-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(202, 116, 125, 0.3);
+}
+
+.export-dropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: all 0.3s ease;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+}
+
+.export-dropdown.open {
+    max-height: 120px;
+    opacity: 1;
+    padding: 5px;
+}
+
+.export-option {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.export-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--accent-primary);
 }

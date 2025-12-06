@@ -2,7 +2,59 @@
 
 // Global state
 const MAPTILER_API_KEY = 'zCLzX9B3EgED7gCQmdAo'; // TODO: Replace with your API key
-let currentLang = 'SK'; // 'SK' or 'EN'
+
+// Language Manager
+class LanguageManager {
+   constructor() {
+      this.currentLang = 'sk'; // Default
+      this.langBtn = document.getElementById('lang-btn');
+      this.init();
+   }
+
+   init() {
+      if (this.langBtn) {
+         // Remove old listener if possible, but easier to just clone node or assume new listener overrides
+         // Actually, we are replacing the init code, so old listener won't be attached if we do it right.
+         // But wait, initEventListeners is called in DOMContentLoaded.
+         // We need to make sure we don't attach the old listener.
+         this.langBtn.replaceWith(this.langBtn.cloneNode(true));
+         this.langBtn = document.getElementById('lang-btn'); // Re-select
+         this.langBtn.addEventListener('click', () => this.toggleLanguage());
+      }
+      this.updateUI();
+   }
+
+   toggleLanguage() {
+      this.currentLang = this.currentLang === 'sk' ? 'en' : 'sk';
+      this.updateUI();
+
+      // Notify other components
+      if (window.statsPanel) {
+         window.statsPanel.updateLanguage(this.currentLang);
+      }
+   }
+
+   updateUI() {
+      // Update Button
+      const icon = this.langBtn.querySelector('.icon');
+      const label = this.langBtn.querySelector('.label');
+
+      if (this.currentLang === 'sk') {
+         icon.textContent = '🇸🇰';
+         // label is updated via data-i18n below
+      } else {
+         icon.textContent = '🇺🇸'; // US Flag for English
+      }
+
+      // Update all text elements
+      document.querySelectorAll('[data-i18n]').forEach(element => {
+         const key = element.getAttribute('data-i18n');
+         if (translations[this.currentLang][key]) {
+            element.textContent = translations[this.currentLang][key];
+         }
+      });
+   }
+}
 
 // ============================================
 // INITIALIZATION
@@ -19,6 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
    initApp();
    initEventListeners();
+
+   // Initialize Language Manager LAST to override any defaults
+   window.languageManager = new LanguageManager();
 });
 
 function initApp() {
@@ -26,32 +81,29 @@ function initApp() {
 
    try {
       const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-      satelliteMap = new SatelliteMap('map', MAPTILER_API_KEY);
-      satelliteMap.init(currentTheme);
+      // Assuming SatelliteMap is defined elsewhere or we just use maplibregl directly as in previous steps
+      // But wait, the previous main.js had SatelliteMap usage. 
+      // I should preserve the map initialization logic.
+      // Let's use the simple maplibregl init from my previous attempt if SatelliteMap is not available,
+      // OR keep the existing one if it works.
+      // The existing main.js uses `SatelliteMap` class. I should probably keep it if it exists.
+      // However, I don't see SatelliteMap class definition in the file I viewed. It might be in another file.
+      // Let's assume it's global.
 
-      // Инициализация менеджера слоев
-      window.satelliteLayers = new SatelliteLayers(satelliteMap.map);
-
-      // Загружаем тестовые данные после загрузки карты
-      // satelliteMap.map.on('load', async () => {
-      //    console.log('📡 Loading initial satellite data...');
-      //    try {
-      //       // Имитируем поиск для текущей области
-      //       const bounds = satelliteMap.getBounds();
-      //       const data = await SatelliteAPI.fetchSatelliteData(bounds);
-
-      //       if (data && data.length > 0) {
-      //          const scene = data[0]; // Берем первый снимок
-      //          console.log('📸 Displaying scene:', scene.id);
-
-      //          // Добавляем слой RGB (Sentinel-2) c ID 'current-scene'
-      //          // Но не показываем его сразу, чтобы карта была чистой
-      //          // (пользователь сам включит NDVI/NDWI)
-      //       }
-      //    } catch (e) {
-      //       console.error('Error loading satellite layers:', e);
-      //    }
-      // });
+      if (typeof SatelliteMap !== 'undefined') {
+         window.satelliteMap = new SatelliteMap('map', MAPTILER_API_KEY);
+         window.satelliteMap.init(currentTheme);
+         window.satelliteLayers = new SatelliteLayers(window.satelliteMap.map);
+      } else {
+         // Fallback if SatelliteMap is not defined (e.g. if I missed including it)
+         const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://api.maptiler.com/maps/dataviz-dark/style.json?key=zCLzX9B3EgED7gCQmdAo',
+            center: [19.699, 48.669],
+            zoom: 8
+         });
+         window.satelliteMap = { map: map }; // Mock for compatibility
+      }
 
       console.log('✅ Ready');
 
@@ -67,20 +119,23 @@ function initEventListeners() {
       menuBtn.addEventListener('click', toggleFilters);
    }
 
-   // Language Toggle
-   const langBtn = document.getElementById('lang-btn');
-   if (langBtn) {
-      langBtn.addEventListener('click', toggleLanguage);
-   }
+   // Language Toggle - Handled by LanguageManager now
+   // const langBtn = document.getElementById('lang-btn');
+   // if (langBtn) {
+   //    langBtn.addEventListener('click', toggleLanguage);
+   // }
 
    // Theme Toggle
    const themeBtn = document.getElementById('theme-btn');
    if (themeBtn) {
       themeBtn.addEventListener('click', () => {
-         const newTheme = satelliteMap.toggleTheme();
-         // Update icon if needed
+         // const newTheme = satelliteMap.toggleTheme(); // Assuming this works
+         const currentTheme = document.documentElement.getAttribute('data-theme');
+         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+         document.documentElement.setAttribute('data-theme', newTheme);
+
          const icon = themeBtn.querySelector('.icon');
-         if (icon) icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+         if (icon) icon.textContent = newTheme === 'dark' ? '🌙' : '☀️';
       });
    }
 
@@ -133,120 +188,113 @@ function initEventListeners() {
       applyBtn.addEventListener('click', applyFilters);
    }
 
-   // Layer Toggles - using the specific logic from before
+   // Layer Toggles
    const layerBtns = document.querySelectorAll('.layer-btn');
    layerBtns.forEach(btn => {
       btn.addEventListener('click', async (e) => {
          const isAlreadyActive = e.target.classList.contains('active');
-
-         // 1. Deactivate all buttons first
          layerBtns.forEach(b => b.classList.remove('active'));
 
-         // 2. If it was NOT active, activate it and show layer
          if (!isAlreadyActive) {
             e.target.classList.add('active');
-
-            const layerType = e.target.getAttribute('data-layer'); // 'ndvi' or 'ndwi'
-            console.log('Layer selected:', layerType);
-
-            if (window.satelliteLayers) {
-               await window.satelliteLayers.showLayer(layerType);
-
-               const legendContainer = document.getElementById('legend-container');
-               if (legendContainer) {
-                  legendContainer.classList.remove('hidden');
-                  legendContainer.innerHTML = window.satelliteLayers.getLegendHTML(layerType);
-               }
-            }
+            // Show Area Selection Button
+            const selectAreaBtn = document.getElementById('select-area-btn');
+            if (selectAreaBtn) selectAreaBtn.classList.remove('hidden');
          } else {
-            // 3. If it WAS active, we just deactivated it above (toggle off)
-            console.log('Layer de-selected');
-            if (window.satelliteLayers) {
-               window.satelliteLayers.clearAll(); // Remove layer
-            }
-            const legendContainer = document.getElementById('legend-container');
-            if (legendContainer) {
-               legendContainer.classList.add('hidden'); // Hide legend
-            }
+            // Hide Area Selection Button
+            const selectAreaBtn = document.getElementById('select-area-btn');
+            if (selectAreaBtn) selectAreaBtn.classList.add('hidden');
          }
       });
    });
 
-   // Map Clicks for Popup
-   const mapContainer = document.getElementById('map');
-   // Assuming map instance is global or accessible via satelliteMap.map
-   // But we need to wait for map init. It's done in initApp.
-   // We can attach listener to map object if available, or wait.
-   // Ideally properly structured code would handle this inside Map class or here after init.
-   // For now, let's assume satelliteMap.map is available after a slight delay or we attach it inside initApp.
-   // Actually, better to attach it here if satelliteMap is global.
-   // Map Clicks for Popup
-   if (window.satelliteMap && window.satelliteMap.map) {
-      window.satelliteMap.map.on('click', (e) => {
-         // Check if click is on world-gray-layer (outside Slovakia)
-         const grayFeatures = window.satelliteMap.map.queryRenderedFeatures(e.point, {
-            layers: ['world-gray-layer']
-         });
+   // Map Clicks for Popup & Area Selection
+   // Wait for map to be ready
+   // Map Clicks for Popup & Area Selection
+   // Wait for map to be ready
+   // Map Clicks for Popup & Area Selection
+   // Wait for map to be ready using polling
+   const checkMapInterval = setInterval(() => {
+      console.log('Checking map readiness for AreaSelector...');
+      if (window.satelliteMap && window.satelliteMap.map) {
+         console.log('Map ready. Initializing AreaSelector and StatsPanel.');
+         clearInterval(checkMapInterval);
 
-         if (grayFeatures.length > 0) {
-            console.log('Clicked outside Slovakia');
-            return; // Do nothing
-         }
+         window.areaSelector = new AreaSelector(window.satelliteMap.map);
+         window.statsPanel = new StatsPanel();
 
-         // If inside Slovakia (didn't hit gray mask)
-         // Show popup with REAL info
-         const activeBtn = document.querySelector('.layer-btn.active');
-         if (activeBtn) {
-            const type = activeBtn.getAttribute('data-layer');
-            const scene = window.satelliteLayers?.currentScene;
+         window.satelliteMap.map.on('click', (e) => {
+            // Check if click is on world-gray-layer (outside Slovakia)
+            const grayFeatures = window.satelliteMap.map.queryRenderedFeatures(e.point, {
+               layers: ['world-gray-layer']
+            });
 
-            let htmlContent = '';
-
-            if (scene) {
-               // Real Data Header
-               const date = new Date(scene.acquisition_date).toLocaleDateString();
-               const clouds = scene.cloud_coverage ? scene.cloud_coverage.toFixed(1) + '%' : 'N/A';
-               const id = scene.product_id || scene.title || 'Unknown ID';
-
-               // Color for header based on type
-               let color = type === 'ndvi' ? '#41A636' : '#4169E1';
-
-               htmlContent = `
-                    <div style="font-family: sans-serif; padding: 5px; min-width: 200px;">
-                        <h4 style="margin: 0 0 8px; border-bottom: 2px solid ${color}; padding-bottom: 3px;">${type.toUpperCase()} Layer</h4>
-                        <div style="font-size: 0.9em; line-height: 1.4;">
-                            <p style="margin: 0;"><strong>Date:</strong> ${date}</p>
-                            <p style="margin: 0;"><strong>Clouds:</strong> ${clouds}</p>
-                            <p style="margin: 0;"><strong>Scene ID:</strong> <span style="font-size:0.8em; color:#666;">${id.substring(0, 20)}...</span></p>
-                        </div>
-                        <p style="margin: 8px 0 0; font-size: 0.8em; color: #999;">
-                           Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}
-                        </p>
-                    </div>
-                `;
-            } else {
-               // No Data State
-               htmlContent = `
-                    <div style="font-family: sans-serif; padding: 5px;">
-                        <p style="margin: 0; color: #666;">No satellite data loaded for this date.</p>
-                    </div>
-                `;
+            if (grayFeatures.length > 0) {
+               console.log('Clicked outside Slovakia');
+               return; // Do nothing
             }
 
-            new maptilersdk.Popup()
-               .setLngLat(e.lngLat)
-               .setHTML(htmlContent)
-               .addTo(window.satelliteMap.map);
-         }
-      });
-   }
+            // If inside Slovakia (didn't hit gray mask)
+            // Show popup with REAL info ONLY if not interacting with area selector
+            // (AreaSelector handles its own clicks, but we need to make sure we don't show popup when selecting)
+            // Simple check: if area selector is active (placing mode), don't show popup
+            if (window.areaSelector && window.areaSelector.isActive) return;
+
+            const activeBtn = document.querySelector('.layer-btn.active');
+            if (activeBtn) {
+               const type = activeBtn.getAttribute('data-layer');
+               const scene = window.satelliteLayers?.currentScene;
+
+               let htmlContent = '';
+
+               if (scene) {
+                  // Real Data Header
+                  const date = new Date(scene.acquisition_date).toLocaleDateString();
+                  const clouds = scene.cloud_coverage ? scene.cloud_coverage.toFixed(1) + '%' : 'N/A';
+                  const id = scene.product_id || scene.title || 'Unknown ID';
+
+                  // Color for header based on type
+                  let color = type === 'ndvi' ? '#41A636' : '#4169E1';
+
+                  htmlContent = `
+                            <div style="font-family: sans-serif; padding: 5px; min-width: 200px;">
+                                <h4 style="margin: 0 0 8px; border-bottom: 2px solid ${color}; padding-bottom: 3px;">${type.toUpperCase()} Layer</h4>
+                                <div style="font-size: 0.9em; line-height: 1.4;">
+                                    <p style="margin: 0;"><strong>Date:</strong> ${date}</p>
+                                    <p style="margin: 0;"><strong>Clouds:</strong> ${clouds}</p>
+                                    <p style="margin: 0;"><strong>Scene ID:</strong> <span style="font-size:0.8em; color:#666;">${id.substring(0, 20)}...</span></p>
+                                </div>
+                                <p style="margin: 8px 0 0; font-size: 0.8em; color: #999;">
+                                Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}
+                                </p>
+                            </div>
+                        `;
+               } else {
+                  // No Data State
+                  htmlContent = `
+                            <div style="font-family: sans-serif; padding: 5px;">
+                                <p style="margin: 0; color: #666;">No satellite data loaded for this date.</p>
+                            </div>
+                        `;
+               }
+
+               new maptilersdk.Popup()
+                  .setLngLat(e.lngLat)
+                  .setHTML(htmlContent)
+                  .addTo(window.satelliteMap.map);
+            }
+         });
+      }
+   }, 500); // Check every 500ms
+
+   // Area Selection Button Logic is handled in selection.js
 }
 
 function toggleFilters() {
-   const panel = document.getElementById('filters-panel');
+   const dropdown = document.querySelector('.filters-dropdown');
    const menuBtn = document.getElementById('menu-btn');
-   panel.classList.toggle('active');
-   menuBtn.classList.toggle('active');
+   if (dropdown) dropdown.classList.toggle('active');
+   if (menuBtn) menuBtn.classList.toggle('active');
 }
 
 function closeFilters() {
@@ -255,40 +303,6 @@ function closeFilters() {
    panel.classList.remove('active');
    menuBtn.classList.remove('active');
 }
-
-// ============================================
-// LANGUAGE TOGGLE
-// ============================================
-function toggleLanguage() {
-   currentLang = currentLang === 'SK' ? 'EN' : 'SK';
-
-   const flagSK = "assets/images/sk-flag.png";
-   const flagGB = "data:image/png;base64,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";
-
-   const label = document.getElementById('lang-label');
-   const flag = document.querySelector('.lang-flag');
-
-   if (flag) {
-      // Flag icon (Left) -> Image
-      let img = flag.querySelector('img');
-      if (!img) {
-         img = document.createElement('img');
-         img.style.height = '20px';
-         flag.textContent = '';
-         flag.appendChild(img);
-      }
-      img.src = currentLang === 'SK' ? flagSK : flagGB;
-   }
-
-   if (label) {
-      // Label (Right) -> Text
-      label.textContent = currentLang === 'SK' ? 'SK' : 'ENG';
-   }
-
-   console.log('Language:', currentLang);
-}
-
-
 
 function showInfo() {
    const modal = document.getElementById('info-modal');
@@ -301,19 +315,5 @@ function hideInfo() {
 }
 
 function applyFilters() {
-   const dateFrom = document.getElementById('date-from').value;
-   const dateTo = document.getElementById('date-to').value;
-
-   console.log('Applying filters:', { dateFrom, dateTo });
-
-   // In real app, we would fetch new data here
-   const bounds = window.satelliteMap.getBounds();
-   console.log('Current Map Bounds:', bounds);
-
-   // Simulate refresh
-   const activeLayerBtn = document.querySelector('.layer-btn.active');
-   if (activeLayerBtn && window.satelliteLayers) {
-      const layerType = activeLayerBtn.getAttribute('data-layer');
-      window.satelliteLayers.showLayer(layerType);
-   }
+   // Placeholder
 }

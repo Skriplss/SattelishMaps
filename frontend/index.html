@@ -20,84 +20,61 @@
 
     <!-- Left Sidebar -->
     <aside id="left-panel">
-        <!-- Logo + Date/Time -->
-        <div class="logo-section">
-            <div class="logo">
-                <span class="logo-icon">🛰️</span>
-                <div class="logo-text">
-                    <strong>Satellish</strong><br>
-                    <small>Maps</small>
-                </div>
-            </div>
-            <div class="date-display" id="sidebar-date"></div>
-        </div>
-
         <!-- Menu Button (opens filters) -->
         <button class="sidebar-btn" id="menu-btn" title="Filtre">
             <span class="icon">☰</span>
-            <span class="label">Filtre</span>
+            <span class="label" data-i18n="menu.filters">Filtre</span>
         </button>
 
         <!-- Filters Panel (expands down inside sidebar) -->
         <div id="filters-panel" class="filters-dropdown">
             <div class="filters-content">
                 <div class="filter-section">
-                    <label>Časový rozsah</label>
-                    <input type="date" class="filter-input" id="date-from" value="2024-01-01">
-                    <span class="range-separator">→</span>
-                    <input type="date" class="filter-input" id="date-to" value="2024-12-05">
-                </div>
-
-                <div class="filter-section">
-                    <label>Región</label>
-                    <select class="filter-input" id="region-select">
-                        <option value="">Všetky</option>
-                        <option value="bratislava">Bratislava</option>
-                        <option value="kosice">Košice</option>
-                        <option value="presov">Prešov</option>
-                        <option value="zilina">Žilina</option>
-                        <option value="banska-bystrica">Banská Bystrica</option>
-                        <option value="nitra">Nitra</option>
-                        <option value="trnava">Trnava</option>
-                        <option value="trencin">Trenčín</option>
-                        <option value="martin">Martin</option>
-                        <option value="poprad">Poprad</option>
-                    </select>
-                </div>
-
-                <div class="filter-section">
-                    <label>Satelitná vrstva</label>
+                    <label data-i18n="filters.layers">Satelitná vrstva</label>
                     <div class="layer-toggle">
-                        <button class="layer-btn" data-layer="ndvi">NDVI</button>
-                        <button class="layer-btn" data-layer="ndwi">NDWI</button>
+                        <button class="layer-btn" data-layer="ndvi" data-i18n="filters.ndvi">NDVI</button>
+                        <button class="layer-btn" data-layer="ndwi" data-i18n="filters.ndwi">NDWI</button>
                     </div>
-
-
                 </div>
 
-                <button class="apply-filters-btn">Použiť</button>
+                <!-- Placeholder for future filters -->
+                <div class="filter-section filter-placeholder">
+                    <small style="color: var(--text-secondary); font-style: italic;" data-i18n="filters.placeholder">
+                        Miesto pre budúce filtre...
+                    </small>
+                </div>
+
+                <!-- Area Selection Button (Visible only when layer active) -->
+                <button class="sidebar-btn hidden" id="select-area-btn" title="Výber oblasti" style="margin-top: 15px;">
+                    <span class="icon">⬚</span>
+                    <span class="label" data-i18n="filters.select_area">Vybrať oblasť</span>
+                </button>
             </div>
         </div>
 
-        <!-- Language Toggle -->
-        <button class="sidebar-btn" id="lang-btn" title="Jazyk">
-            <span class="icon lang-flag">
-                <img src="assets/images/sk-flag.png" style="height: 20px;">
-            </span>
-            <span class="label" id="lang-label">SK</span>
-        </button>
 
-        <!-- Theme Toggle -->
-        <button class="sidebar-btn" id="theme-btn" title="Téma">
-            <span class="icon theme-icon">🌙</span>
-            <span class="label">Téma</span>
-        </button>
+        <!-- Bottom Buttons (fixed at bottom) -->
+        <div class="sidebar-bottom-buttons">
+            <!-- Language Toggle -->
+            <button class="sidebar-btn" id="lang-btn" title="Jazyk">
+                <span class="icon lang-flag">
+                    <img src="assets/images/sk-flag.png" style="height: 20px;">
+                </span>
+                <span class="label" id="lang-label" data-i18n="menu.language">SK</span>
+            </button>
 
-        <!-- Info Button -->
-        <button class="sidebar-btn" id="info-btn" title="Info">
-            <span class="icon">ℹ️</span>
-            <span class="label">Info</span>
-        </button>
+            <!-- Theme Toggle -->
+            <button class="sidebar-btn" id="theme-btn" title="Téma">
+                <span class="icon theme-icon">🌙</span>
+                <span class="label" data-i18n="menu.theme">Téma</span>
+            </button>
+
+            <!-- Info Button -->
+            <button class="sidebar-btn" id="info-btn" title="Info">
+                <span class="icon">ℹ️</span>
+                <span class="label" data-i18n="menu.info">Info</span>
+            </button>
+        </div>
     </aside>
 
     <!-- Fullscreen Map -->
@@ -105,11 +82,23 @@
 
     <!-- Date/Time Control Panel (on map, DeepState style) -->
     <div id="datetime-control">
-        <button class="dt-btn" id="play-btn">▶</button>
-        <button class="dt-btn" id="speed-btn">1x</button>
-        <input type="date" class="dt-date" id="map-date" value="2024-12-05">
-        <button class="dt-nav">◀</button>
-        <button class="dt-nav">▶</button>
+        <!-- Logo and Title -->
+        <div class="dt-logo">
+            <img src="assets/images/logo.png" alt="Logo" class="dt-logo-img">
+            <div class="dt-logo-text">
+                <strong>Satellish</strong>
+                <small>Maps</small>
+            </div>
+        </div>
+
+        <!-- Date Controls -->
+        <div class="dt-controls-group">
+            <button class="dt-btn" id="play-btn">▶</button>
+            <button class="dt-btn" id="speed-btn">1x</button>
+            <input type="date" class="dt-date" id="map-date" value="2024-12-05">
+            <button class="dt-nav">◀</button>
+            <button class="dt-nav">▶</button>
+        </div>
     </div>
 
     <!-- Zoom Controls -->
@@ -138,10 +127,60 @@
     <!-- Legend Container -->
     <div id="legend-container" class="legend-panel hidden"></div>
 
+    <!-- Area Selection Cursor -->
+    <div id="area-selection-cursor" class="hidden"></div>
+
+    <!-- Statistics Panel -->
+    <div id="stats-panel" class="stats-panel">
+        <div class="stats-header">
+            <h3 data-i18n="stats.title">Analýza oblasti</h3>
+            <button id="close-stats" class="close-btn">×</button>
+        </div>
+
+        <div class="stats-controls">
+            <div class="date-input-group">
+                <label data-i18n="stats.date_from">Od:</label>
+                <input type="date" id="stats-date-from" value="2024-01-01">
+            </div>
+            <div class="date-input-group">
+                <label data-i18n="stats.date_to">Do:</label>
+                <input type="date" id="stats-date-to" value="2024-12-31">
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="ndvi-chart"></canvas>
+        </div>
+
+        <div class="ai-analysis-container">
+            <h4 data-i18n="stats.ai_title">AI Analýza</h4>
+            <div class="ai-text-box" id="ai-analysis-text" data-i18n="stats.loading_analysis">
+                Načítavam analýzu...
+            </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="export-section">
+            <button id="export-btn" class="export-btn" data-i18n="stats.export_btn">
+                Stiahnuť
+            </button>
+            <div id="export-dropdown" class="export-dropdown">
+                <button class="export-option" id="export-chart" data-i18n="stats.export_chart">Stiahnuť graf</button>
+                <button class="export-option" id="export-text" data-i18n="stats.export_text">Stiahnuť text</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- Scripts -->
+    <script src="js/translations.js"></script>
     <script src="js/api.js"></script>
     <script src="js/map.js"></script>
     <script src="js/layers.js"></script>
+    <script src="js/selection.js"></script>
+    <script src="js/stats.js"></script>
     <script src="js/main.js"></script>
 </body>
 
