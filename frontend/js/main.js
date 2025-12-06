@@ -8,6 +8,15 @@ let currentLang = 'SK'; // 'SK' or 'EN'
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
+   // Set default dates to TODAY
+   const today = new Date().toISOString().split('T')[0];
+
+   const mapDate = document.getElementById('map-date');
+   if (mapDate) mapDate.value = today;
+
+   const dateTo = document.getElementById('date-to');
+   if (dateTo) dateTo.value = today;
+
    initApp();
    initEventListeners();
 });
@@ -86,7 +95,36 @@ function initEventListeners() {
    const dateTo = document.getElementById('date-to');
    if (dateFrom && dateTo) {
       dateFrom.addEventListener('change', applyFilters);
+      dateFrom.addEventListener('change', applyFilters);
       dateTo.addEventListener('change', applyFilters);
+   }
+
+   // Map Date Input (Timeline)
+   const mapDate = document.getElementById('map-date');
+   const dtNavBtns = document.querySelectorAll('.dt-nav');
+
+   if (mapDate) {
+      mapDate.addEventListener('change', applyFilters);
+
+      // Previous Day
+      if (dtNavBtns[0]) {
+         dtNavBtns[0].addEventListener('click', () => {
+            const currentDate = new Date(mapDate.value || new Date());
+            currentDate.setDate(currentDate.getDate() - 1);
+            mapDate.value = currentDate.toISOString().split('T')[0];
+            applyFilters();
+         });
+      }
+
+      // Next Day
+      if (dtNavBtns[1]) {
+         dtNavBtns[1].addEventListener('click', () => {
+            const currentDate = new Date(mapDate.value || new Date());
+            currentDate.setDate(currentDate.getDate() + 1);
+            mapDate.value = currentDate.toISOString().split('T')[0];
+            applyFilters();
+         });
+      }
    }
 
    // Apply Filters Button
@@ -98,7 +136,7 @@ function initEventListeners() {
    // Layer Toggles - using the specific logic from before
    const layerBtns = document.querySelectorAll('.layer-btn');
    layerBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
          const isAlreadyActive = e.target.classList.contains('active');
 
          // 1. Deactivate all buttons first
@@ -112,7 +150,7 @@ function initEventListeners() {
             console.log('Layer selected:', layerType);
 
             if (window.satelliteLayers) {
-               window.satelliteLayers.showLayer(layerType);
+               await window.satelliteLayers.showLayer(layerType);
 
                const legendContainer = document.getElementById('legend-container');
                if (legendContainer) {
@@ -156,44 +194,48 @@ function initEventListeners() {
          }
 
          // If inside Slovakia (didn't hit gray mask)
-         // Show popup with mock info
-         // Get active layer
+         // Show popup with REAL info
          const activeBtn = document.querySelector('.layer-btn.active');
          if (activeBtn) {
             const type = activeBtn.getAttribute('data-layer');
-            let value, category, color;
+            const scene = window.satelliteLayers?.currentScene;
 
-            // Mock logic to generate realistic values based on type
-            if (type === 'ndvi') {
-               // Random value between -0.2 and 0.8 for mock
-               value = (Math.random() * 1.0 - 0.2).toFixed(2);
+            let htmlContent = '';
 
-               if (value < 0) { category = 'Water/Asphalt'; color = '#D73027'; }
-               else if (value < 0.2) { category = 'Bare Soil'; color = '#FC8D59'; }
-               else if (value < 0.4) { category = 'Sparse Vegetation'; color = '#FEE090'; }
-               else if (value < 0.6) { category = 'Moderate Vegetation'; color = '#41A636'; }
-               else { category = 'Dense Vegetation'; color = '#168043'; }
+            if (scene) {
+               // Real Data Header
+               const date = new Date(scene.acquisition_date).toLocaleDateString();
+               const clouds = scene.cloud_coverage ? scene.cloud_coverage.toFixed(1) + '%' : 'N/A';
+               const id = scene.product_id || scene.title || 'Unknown ID';
 
-            } else if (type === 'ndwi') {
-               // Random value between -0.5 and 0.8
-               value = (Math.random() * 1.3 - 0.5).toFixed(2);
+               // Color for header based on type
+               let color = type === 'ndvi' ? '#41A636' : '#4169E1';
 
-               if (value < 0) { category = 'Dry Soil/Asphalt'; color = '#00005C'; }
-               else if (value < 0.2) { category = 'Moderate Moisture'; color = '#0000CD'; }
-               else if (value < 0.5) { category = 'Moist Soil'; color = '#4169E1'; }
-               else { category = 'Water'; color = '#87CEEB'; }
+               htmlContent = `
+                    <div style="font-family: sans-serif; padding: 5px; min-width: 200px;">
+                        <h4 style="margin: 0 0 8px; border-bottom: 2px solid ${color}; padding-bottom: 3px;">${type.toUpperCase()} Layer</h4>
+                        <div style="font-size: 0.9em; line-height: 1.4;">
+                            <p style="margin: 0;"><strong>Date:</strong> ${date}</p>
+                            <p style="margin: 0;"><strong>Clouds:</strong> ${clouds}</p>
+                            <p style="margin: 0;"><strong>Scene ID:</strong> <span style="font-size:0.8em; color:#666;">${id.substring(0, 20)}...</span></p>
+                        </div>
+                        <p style="margin: 8px 0 0; font-size: 0.8em; color: #999;">
+                           Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}
+                        </p>
+                    </div>
+                `;
+            } else {
+               // No Data State
+               htmlContent = `
+                    <div style="font-family: sans-serif; padding: 5px;">
+                        <p style="margin: 0; color: #666;">No satellite data loaded for this date.</p>
+                    </div>
+                `;
             }
 
             new maptilersdk.Popup()
                .setLngLat(e.lngLat)
-               .setHTML(`
-                        <div style="font-family: sans-serif; padding: 5px; min-width: 150px;">
-                            <h4 style="margin: 0 0 5px; border-bottom: 2px solid ${color}; padding-bottom: 3px;">${type.toUpperCase()} Data</h4>
-                            <p style="margin: 5px 0 0;">Value: <strong>${value}</strong></p>
-                            <p style="margin: 2px 0; font-size: 0.9em; color: #555;">${category}</p>
-                            <p style="margin: 5px 0 0; font-size: 0.8em; color: #999;">Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}</p>
-                        </div>
-                   `)
+               .setHTML(htmlContent)
                .addTo(window.satelliteMap.map);
          }
       });

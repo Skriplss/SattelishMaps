@@ -136,7 +136,7 @@ class CopernicusService:
         
         return {'lat': 0, 'lon': 0}
     
-    def save_to_supabase(self, products: List[Dict[str, Any]]) -> int:
+    def save_to_supabase(self, products: List[Dict[str, Any]]) -> Dict[str, str]:
         """
         Save Sentinel-2 products to Supabase
         
@@ -144,11 +144,13 @@ class CopernicusService:
             products: List of product dictionaries
         
         Returns:
-            Number of products saved
+            Dict mapping product_id to database UUID
         """
         from services.supabase_service import supabase_service
         
+        saved_map = {}
         saved_count = 0
+        
         for product in products:
             try:
                 # Prepare data for Supabase
@@ -168,17 +170,20 @@ class CopernicusService:
                     cp = product['center_point']
                     data['center_point'] = f"POINT({cp['lon']} {cp['lat']})"
                 
-                # Save to Supabase
-                supabase_service.insert_satellite_image(data)
-                saved_count += 1
-                logger.info(f"Saved product {product['product_id']} to Supabase")
+                # Save to Supabase (returns the inserted/existing row)
+                result = supabase_service.insert_satellite_image(data)
+                
+                if result and 'id' in result:
+                    saved_map[product['product_id']] = result['id']
+                    saved_count += 1
+                    logger.info(f"Saved product {product['product_id']} to Supabase (UUID: {result['id']})")
                 
             except Exception as e:
                 logger.error(f"Failed to save product {product.get('product_id')}: {str(e)}")
                 continue
         
         logger.info(f"Saved {saved_count}/{len(products)} products to Supabase")
-        return saved_count
+        return saved_map
     
     def get_product_info(self, product_id: str) -> Dict[str, Any]:
         """Get detailed product information"""

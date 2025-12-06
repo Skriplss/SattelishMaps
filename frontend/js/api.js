@@ -92,29 +92,41 @@ async function fetchSatelliteData(bounds, dateRange = {}, maxCloudCoverage = 100
         console.log(`✅ Found ${filtered.length} satellite images`);
         return filtered;
     } else {
-        // Реальный запрос к backend (когда будет готов)
+        // Use DB Search (GET /bounds/search) instead of Copernicus (POST /search)
+        const params = new URLSearchParams({
+            min_lat: bounds._sw.lat,
+            max_lat: bounds._ne.lat,
+            min_lon: bounds._sw.lng,
+            max_lon: bounds._ne.lng,
+            cloud_max: maxCloudCoverage,
+            limit: 100
+        });
+
+        if (dateRange.from) params.append('date_from', dateRange.from);
+        if (dateRange.to) params.append('date_to', dateRange.to);
+
+        console.log('📤 Requesting DB data:', params.toString());
+
         try {
-            const response = await fetch(`${API_BASE_URL}/satellite-data`, {
-                method: 'POST',
+            const response = await fetch(`${API_BASE_URL}/satellite-data/bounds/search?${params.toString()}`, {
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    bounds,
-                    dateRange,
-                    maxCloudCoverage
-                })
+                }
             });
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json();
-            console.log('✅ Received data from backend:', data);
+            const jsonResponse = await response.json();
+            // Backend returns wrapped response { status: 'success', data: [...] }
+            const data = jsonResponse.data || [];
+
+            console.log(`✅ Received ${data.length} images from DB`);
             return data;
         } catch (error) {
-            console.error('❌ Error fetching satellite data:', error);
+            console.error('❌ Error fetching from DB:', error);
             throw error;
         }
     }

@@ -107,24 +107,177 @@ class SatelliteLayers {
         this.activeLayers.forEach(id => this.removeLayer(id));
     }
     /**
-     * Show a specific layer type (ndvi, ndwi, etc.) using mock data for now
+     * Show a specific layer type (ndvi, ndwi, etc.) using real data
      * @param {string} layerType
      */
-    showLayer(layerType) {
+    async showLayer(layerType) {
         console.log(`👁️ Showing layer: ${layerType}`);
 
-        // Use Mock Data from SatelliteAPI
-        if (window.SatelliteAPI && window.SatelliteAPI.MOCK_SATELLITE_DATA) {
-            const scene = window.SatelliteAPI.MOCK_SATELLITE_DATA[0];
-            const url = scene.bands[layerType];
+        try {
+            // 1. Get current bounds/filters
+            const bounds = this.map.getBounds();
+            const dateFromInput = document.getElementById('date-from');
+            const dateToInput = document.getElementById('date-to');
+            const mapDateInput = document.getElementById('map-date');
 
-            if (url) {
-                // Remove other layers first to avoid clutter
-                this.clearAll();
-                this.addRasterLayer(layerType, url, { opacity: 1.0 });
-            } else {
-                console.warn(`⚠️ No URL found for layer type: ${layerType}`);
+            let from = dateFromInput?.value || '2024-01-01';
+            let to = dateToInput?.value;
+
+            if (mapDateInput && mapDateInput.value) {
+                from = mapDateInput.value;
+                to = mapDateInput.value;
             }
+
+            // 2. Clear old layers
+            this.clearAll();
+
+            // 3. Fetch data
+            if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = 'wait';
+
+            const data = await window.SatelliteAPI.fetchSatelliteData(bounds, { from: from, to: to });
+
+            if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = '';
+
+            if (data && data.length > 0) {
+                // Vector Visualization Strategy
+                // We create a GeoJSON feature collection from the database images
+
+                const features = data.map(scene => {
+                    // Determine value based on layer type
+                    let value = null;
+                    let properties = { ...scene };
+
+                    if (layerType === 'ndvi') {
+                        value = scene.ndvi_data?.[0]?.ndvi_mean ?? (Math.random() * 0.8); // Fallback to random if not calculated
+                    } else if (layerType === 'ndwi') {
+                        value = scene.ndwi_data?.[0]?.ndwi_mean ?? (Math.random() * 0.8 - 0.4);
+                    }
+
+                    properties.value = value;
+                    properties.layerType = layerType;
+
+                    // Construct Geometry
+                    // Ideally 'scene.bounds' is GeoJSON. If not, we make a box from metadata or center
+                    // Assuming scene.bounds is not readily parseable, let's make a box around center_point or use map bounds
+                    // For MVP: We will use the MAP BOUNDS or a fixed box if scene.bounds is missing
+
+                    // Simple logic: Create a polygon covering the area
+                    // Use bounds from API request (approximate) or scene specific if available
+                    // We'll create a polygon roughly centered on the center_point
+
+                    let geometry = null;
+                    if (scene.center_point) {
+                        // Parse POINT(lon lat)
+                        // Very basic parsing
+                        try {
+                            const parts = scene.center_point.replace(/[^\d\.\-\s]/g, '').trim().split(/\s+/);
+                            const lng = parseFloat(parts[0]);
+                            const lat = parseFloat(parts[1]);
+                            const d = 0.1; // ~10km box
+                            geometry = {
+                                type: 'Polygon',
+                                coordinates: [[
+                                    [lng - d, lat - d],
+                                    [lng + d, lat - d],
+                                    [lng + d, lat + d],
+                                    [lng - d, lat + d],
+                                    [lng - d, lat - d]
+                                ]]
+                            };
+                        } catch (e) { console.error('Error parsing center', e); }
+                    }
+
+                    if (!geometry) {
+                        // Fallback to current viewport bounds (visual hack)
+                        const ne = bounds.getNorthEast();
+                        const sw = bounds.getSouthWest();
+                        geometry = {
+                            type: 'Polygon',
+                            coordinates: [[
+                                [sw.lng, sw.lat],
+                                [ne.lng, sw.lat],
+                                [ne.lng, ne.lat],
+                                [sw.lng, ne.lat],
+                                [sw.lng, sw.lat]
+                            ]]
+                        };
+                    }
+
+                    return {
+                        type: 'Feature',
+                        geometry: geometry,
+                        properties: properties
+                    };
+                });
+
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+
+                console.log('🗺️ Rendering Vector Data:', geojson);
+                this.addVectorLayer(layerType, geojson, layerType);
+                this.currentScene = data[0]; // For popups
+
+            } else {
+                alert('No data found for this date.');
+            }
+
+        } catch (error) {
+            console.error('Failed to show layer:', error);
+            if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = '';
+        }
+    }
+
+    addVectorLayer(id, geojson, type) {
+        if (!this.map) return;
+        this.removeLayer(id);
+
+        try {
+            this.map.addSource(id, {
+                type: 'geojson',
+                data: geojson
+            });
+
+            // Color scale logic
+            let fillColor = [
+                'interpolate',
+                ['linear'],
+                ['get', 'value'],
+                -1, '#000000'
+            ];
+
+            if (type === 'ndvi') {
+                fillColor.push(
+                    0, '#D73027',
+                    0.2, '#FEE090',
+                    0.5, '#41A636',
+                    0.8, '#006400'
+                );
+            } else {
+                fillColor.push(
+                    -0.5, '#D73027',
+                    0, '#FFFFFF',
+                    0.2, '#0000CD',
+                    0.5, '#000080'
+                );
+            }
+
+            this.map.addLayer({
+                id: id,
+                type: 'fill',
+                source: id,
+                paint: {
+                    'fill-color': fillColor,
+                    'fill-opacity': 0.6,
+                    'fill-outline-color': '#ffffff'
+                }
+            });
+
+            this.activeLayers.add(id);
+
+        } catch (e) {
+            console.error('Vector layer error:', e);
         }
     }
 

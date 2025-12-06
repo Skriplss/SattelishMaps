@@ -80,25 +80,65 @@ class SafeProductImporter:
             acq_date = datetime.now()
         
         # Footprint (Geometric_Info)
-        # Note: Parsing GML/Geometric_Info from XML is complex. 
-        # For manual import MVP, we might skip precise footprint or calculate bounding box from valid pixels if needed.
-        # OR we can assume user provides bounds or use a dummy point for now if complex.
-        # Let's try to find simple center point or use dummy.
-        center_point = {'lat': 0, 'lon': 0}
+        # Parse EXT_POS_LIST for accurate bounds
+        bounds_wkt = None
+        center_point_wkt = None
+        
+        try:
+            geometric_info = find_xml(root, "Geometric_Info")
+            if geometric_info:
+                footprint = find_xml(geometric_info, "Product_Footprint")
+                if footprint:
+                    global_footprint = find_xml(footprint, "Global_Footprint")
+                    if global_footprint:
+                        pos_list = find_xml(global_footprint, "EXT_POS_LIST")
+                        if pos_list is not None and pos_list.text:
+                            # Sentinel-2 format: Lat1 Lon1 Lat2 Lon2 ...
+                            coords = pos_list.text.strip().split()
+                            if len(coords) >= 4:
+                                poly_coords = []
+                                lats = []
+                                lons = []
+                                
+                                # Iterate by 2 (lat, lon)
+                                for i in range(0, len(coords), 2):
+                                    lat = float(coords[i])
+                                    lon = float(coords[i+1])
+                                    lats.append(lat)
+                                    lons.append(lon)
+                                    poly_coords.append(f"{lon} {lat}")
+                                
+                                # Close the polygon if not closed
+                                if poly_coords[0] != poly_coords[-1]:
+                                    poly_coords.append(poly_coords[0])
+                                
+                                bounds_wkt = f"POLYGON(({', '.join(poly_coords)}))"
+                                
+                                # Calculate simple center
+                                avg_lat = sum(lats) / len(lats)
+                                avg_lon = sum(lons) / len(lons)
+                                center_point_wkt = f"POINT({avg_lon} {avg_lat})"
+        except Exception as e:
+            logger.warning(f"Failed to extract footprint: {e}")
+
+        # Fallback if parsing failed
+        if not center_point_wkt:
+             center_point_wkt = "POINT(0 0)"
         
         return {
             'product_id': product_id,
             'title': product_id,
             'acquisition_date': acq_date,
-            'processing_date': datetime.now(), # Approximate
+            'processing_date': datetime.now(),
             'cloud_coverage': cloud_coverage,
-            'thumbnail_url': '', # Local file, no URL
-            'download_url': '', # Local file
+            'thumbnail_url': '',
+            'download_url': '',
             'metadata': {
                 'processinglevel': processing_level,
                 'format': 'SAFE'
             },
-            'center_point': center_point
+            'center_point': center_point_wkt,
+            'bounds': bounds_wkt
         }
 
     def find_band_file(self, safe_path: str, band_name: str) -> str:
@@ -130,7 +170,9 @@ class SafeProductImporter:
                 'cloud_coverage': product_data['cloud_coverage'],
                 'thumbnail_url': product_data['thumbnail_url'],
                 'download_url': product_data['download_url'],
-                'metadata': product_data['metadata']
+                'metadata': product_data['metadata'],
+                'center_point': product_data['center_point'],
+                'bounds': product_data['bounds']
             }
             
             # Insert satellite image

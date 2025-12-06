@@ -124,7 +124,15 @@ async def search_copernicus(request: SatelliteSearchRequest):
             )
         
         # Save products to Supabase
-        saved_count = copernicus_service.save_to_supabase(products)
+        # Returns dict {product_id: uuid}
+        saved_map = copernicus_service.save_to_supabase(products)
+        saved_count = len(saved_map)
+        
+        # Enrich products with UUIDs from database
+        for product in products:
+            p_id = product.get('product_id')
+            if p_id and p_id in saved_map:
+                product['id'] = saved_map[p_id]
         
         return success_response(
             data=products,
@@ -198,34 +206,31 @@ async def get_images_in_bounds(
     max_lat: float = Query(..., ge=-90, le=90),
     min_lon: float = Query(..., ge=-180, le=180),
     max_lon: float = Query(..., ge=-180, le=180),
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     cloud_max: float = Query(30, ge=0, le=100),
-    limit: int = Query(10, ge=1, le=100)
+    limit: int = Query(100, ge=1, le=100)
 ):
     """
-    Get satellite images within a bounding box
-    
-    - **min_lat**: Minimum latitude
-    - **max_lat**: Maximum latitude
-    - **min_lon**: Minimum longitude
-    - **max_lon**: Maximum longitude
-    - **cloud_max**: Maximum cloud coverage
-    - **limit**: Maximum number of results
+    Get satellite images from DATABASE within a bounding box (No Copernicus Search)
     """
     try:
-        logger.info(f"Searching images in bounds: ({min_lat},{min_lon}) to ({max_lat},{max_lon})")
+        logger.info(f"Searching DB images: {date_from} to {date_to}")
         
         data = supabase_service.get_images_in_bounds(
             min_lat=min_lat,
             max_lat=max_lat,
             min_lon=min_lon,
             max_lon=max_lon,
+            date_from=date_from,
+            date_to=date_to,
             cloud_max=cloud_max,
             limit=limit
         )
         
         return success_response(
             data=data,
-            message=f"Found {len(data)} images in bounds",
+            message=f"Found {len(data)} images in database",
             meta={"count": len(data)}
         )
         
