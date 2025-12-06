@@ -48,6 +48,7 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+region_statistics_rows.csv
 
 # IDE
 .vscode/
