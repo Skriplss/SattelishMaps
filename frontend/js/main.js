@@ -197,10 +197,36 @@ function initEventListeners() {
 
          if (!isAlreadyActive) {
             e.target.classList.add('active');
+            const type = e.target.getAttribute('data-layer');
+
+            // Show Layer
+            if (window.satelliteLayers) {
+               window.satelliteLayers.showLayer(type);
+
+               // Update Legend
+               const legendContainer = document.getElementById('legend-container');
+               if (legendContainer) {
+                  legendContainer.innerHTML = window.satelliteLayers.getLegendHTML(type);
+                  legendContainer.classList.remove('hidden');
+               }
+            }
+
             // Show Area Selection Button
             const selectAreaBtn = document.getElementById('select-area-btn');
             if (selectAreaBtn) selectAreaBtn.classList.remove('hidden');
          } else {
+            // Hide Layer (Clear)
+            if (window.satelliteLayers) {
+               window.satelliteLayers.clearAll();
+
+               // Hide Legend
+               const legendContainer = document.getElementById('legend-container');
+               if (legendContainer) {
+                  legendContainer.classList.add('hidden');
+                  legendContainer.innerHTML = '';
+               }
+            }
+
             // Hide Area Selection Button
             const selectAreaBtn = document.getElementById('select-area-btn');
             if (selectAreaBtn) selectAreaBtn.classList.add('hidden');

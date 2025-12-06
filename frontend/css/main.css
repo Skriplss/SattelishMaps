@@ -147,7 +147,7 @@ body {
 }
 
 .filters-dropdown.active {
-    max-height: 300px;
+    max-height: 80vh;
     overflow-y: auto;
 }
 

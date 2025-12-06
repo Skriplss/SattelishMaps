@@ -205,8 +205,12 @@ class StatsPanel {
         if (this.currentAreas.length === 1) {
             if (this.activeLayer === 'ndvi') {
                 this.aiTextBox.textContent = translations[lang]['ai.ndvi_only'];
-            } else {
+            } else if (this.activeLayer === 'ndwi') {
                 this.aiTextBox.textContent = translations[lang]['ai.ndwi_only'];
+            } else if (this.activeLayer === 'ndbi') {
+                this.aiTextBox.textContent = translations[lang]['ai.ndbi_only'];
+            } else if (this.activeLayer === 'moisture') {
+                this.aiTextBox.textContent = translations[lang]['ai.moisture_only'];
             }
         } else {
             // Comparison text

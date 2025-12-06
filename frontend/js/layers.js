@@ -318,7 +318,56 @@ class SatelliteLayers {
                     <div style="background: linear-gradient(to right, #00005C, #0000CD, #4169E1, #87CEEB); height: 8px; width: 100%; margin-top: 8px; border-radius: 4px;"></div>
                 </div>
             `;
+        } else if (layerType === 'ndbi') {
+            return `
+                <div class="legend-item" style="font-family: sans-serif; font-size: 12px;">
+                    <h4 style="margin: 0 0 8px;">NDBI (Built-up)</h4>
+                    
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="width: 15px; height: 15px; background: #D73027; display: inline-block; margin-right: 8px;"></span>
+                        <span>&lt; -0.5: Water</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="width: 15px; height: 15px; background: #FFFFFF; display: inline-block; margin-right: 8px;"></span>
+                        <span>-0.5 - 0: Vegetation</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="width: 15px; height: 15px; background: #A0522D; display: inline-block; margin-right: 8px;"></span>
+                        <span>0 - 0.2: Bare Soil</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="width: 15px; height: 15px; background: #800000; display: inline-block; margin-right: 8px;"></span>
+                        <span>&gt; 0.2: Built-up</span>
+                    </div>
+
+                    <div style="background: linear-gradient(to right, #D73027, #FFFFFF, #A0522D, #800000); height: 8px; width: 100%; margin-top: 8px; border-radius: 4px;"></div>
+                </div>
+            `;
+        } else if (layerType === 'moisture') {
+            return `
+                <div class="legend-item" style="font-family: sans-serif; font-size: 12px;">
+                    <h4 style="margin: 0 0 8px;">Moisture Index</h4>
+                    
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="width: 15px; height: 15px; background: #8B0000; display: inline-block; margin-right: 8px;"></span>
+                        <span>&lt; -0.6: Stress</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="width: 15px; height: 15px; background: #FFFF00; display: inline-block; margin-right: 8px;"></span>
+                        <span>-0.6 - -0.2: Moderate</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="width: 15px; height: 15px; background: #00FFFF; display: inline-block; margin-right: 8px;"></span>
+                        <span>-0.2 - 0.2: High</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <span style="width: 15px; height: 15px; background: #00008B; display: inline-block; margin-right: 8px;"></span>
+                        <span>&gt; 0.2: Very High</span>
+                    </div>
+
+                    <div style="background: linear-gradient(to right, #8B0000, #FFFF00, #00FFFF, #00008B); height: 8px; width: 100%; margin-top: 8px; border-radius: 4px;"></div>
+                </div>
+            `;
         }
-        return '';
     }
 }
