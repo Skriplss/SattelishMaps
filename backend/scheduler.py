@@ -2,9 +2,8 @@
 Automated Scheduler for Sentinel-2 Data Fetching and Processing
 
 This scheduler automatically:
-1. Searches for new Sentinel-2 images from Copernicus
-2. Calculates NDVI and NDWI indices
-3. Saves data to Supabase database
+1. Fetches new Sentinel-2 statistics (NDVI, NDWI) from Sentinel Hub
+2. Saves data to Supabase database
 
 Runs periodically based on SCHEDULER_INTERVAL_HOURS setting.
 """
@@ -12,14 +11,13 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 import asyncio
+from shapely import wkt
 
 from config.settings import settings
-from services.copernicus_service import copernicus_service
+from services.sentinelhub_service import sentinelhub_service
 from services.supabase_service import supabase_service
-from services.ndvi_calculator import ndvi_calculator
-from services.ndwi_calculator import ndwi_calculator
 
 logger = logging.getLogger(__name__)
 
@@ -35,125 +33,132 @@ class SatelliteDataScheduler:
         self.successful_runs = 0
         self.failed_runs = 0
     
-    async def fetch_and_process_sentinel_data(self):
+    def _parse_bbox(self, wkt_polygon: str) -> List[float]:
         """
-        Main job: Fetch new Sentinel-2 data and calculate indices
+        Parse WKT Polygon to BBox [min_lon, min_lat, max_lon, max_lat]
+        """
+        try:
+            poly = wkt.loads(wkt_polygon)
+            bounds = poly.bounds # (minx, miny, maxx, maxy)
+            return list(bounds)
+        except Exception as e:
+            logger.error(f"Failed to parse search bounds: {e}")
+            # Fallback (Central Europe approx) or raise
+            raise
+    
+    async def fetch_and_process_sentinel_data(self, days_back: int = 1):
+        """
+        Main job: Fetch new Sentinel-2 statistics and save to DB
         """
         try:
             logger.info("=" * 80)
-            logger.info("🛰️  Starting automated Sentinel-2 data fetch and processing")
+            logger.info("🛰️  Starting automated Sentinel-2 data fetch (Sentinel Hub)")
             logger.info("=" * 80)
             
             self.total_runs += 1
             self.last_run = datetime.now()
             
-            # Check if Copernicus API is available
-            if not copernicus_service.is_available():
-                logger.warning("Copernicus API not configured - skipping fetch")
-                return
+            # Determine date range
+            date_to = datetime.now()
+            date_from = date_to - timedelta(days=days_back)
             
-            # Determine date range for search
-            latest_date = supabase_service.get_latest_processed_date()
+            time_interval = (date_from.isoformat(), date_to.isoformat())
             
-            if latest_date and not settings.PROCESS_HISTORICAL_DATA:
-                # Search from latest processed date to now
-                date_from = datetime.fromisoformat(latest_date.replace('Z', '+00:00')).date()
-                logger.info(f"Searching for new data since: {date_from}")
-            else:
-                # Search last 7 days
-                date_from = (datetime.now() - timedelta(days=7)).date()
-                logger.info(f"Searching last 7 days from: {date_from}")
+            # Parse Bounds
+            bbox = self._parse_bbox(settings.DEFAULT_SEARCH_BOUNDS)
             
-            date_to = datetime.now().date()
+            logger.info(f"Time Interval: {time_interval}")
+            logger.info(f"BBox: {bbox}")
             
-            # Search for Sentinel-2 products
-            logger.info(f"Searching Copernicus: {date_from} to {date_to}")
-            logger.info(f"Bounds: {settings.DEFAULT_SEARCH_BOUNDS}")
-            logger.info(f"Max cloud coverage: {settings.DEFAULT_CLOUD_MAX}%")
-            
-            products = copernicus_service.search_sentinel2_products(
-                area=settings.DEFAULT_SEARCH_BOUNDS,
-                date_range=(date_from, date_to),
-                cloud_coverage_max=settings.DEFAULT_CLOUD_MAX,
-                limit=20
+            # Fetch Statistics
+            stats = sentinelhub_service.fetch_statistics(
+                bbox_coords=bbox,
+                time_interval=time_interval,
+                aggregation_period="P1D"
             )
             
-            if not products:
-                logger.info("No new products found")
+            if not stats['ndvi'] and not stats['ndwi']:
+                logger.info("No data found for this interval.")
                 self.successful_runs += 1
                 return
+
+            logger.info(f"Found {len(stats['ndvi'])} NDVI records and {len(stats['ndwi'])} NDWI records.")
+
+            # Save to Supabase
+            # Note: We need to adapt the data to the schema.
+            # The schema expects 'satellite_images', 'ndvi_data', 'ndwi_data'.
+            # 'satellite_images' usually requires a product_id. 
+            # Sentinel Hub Statistical API returns aggregated stats, not single 'products'.
+            # We might need to synthesized a 'product' or image entry for the day/interval.
             
-            logger.info(f"Found {len(products)} new Sentinel-2 products")
-            
-            # Save products to database
-            saved_count = copernicus_service.save_to_supabase(products)
-            logger.info(f"Saved {saved_count} products to database")
-            
-            # Process each saved product
-            processed_count = 0
-            for product in products:
-                try:
-                    # Get the saved image from database
-                    image_data = supabase_service.client.table('satellite_images')\
-                        .select('*')\
-                        .eq('product_id', product['product_id'])\
-                        .single()\
-                        .execute()
-                    
-                    if not image_data.data:
-                        logger.warning(f"Image not found in DB: {product['product_id']}")
-                        continue
-                    
-                    image_id = image_data.data['id']
-                    
-                    # Check if indices already calculated
-                    indices_status = supabase_service.check_image_has_indices(image_id)
-                    if indices_status['has_both']:
-                        logger.info(f"Indices already calculated for {product['product_id']}")
-                        continue
-                    
-                    # Calculate NDVI
-                    if not indices_status['has_ndvi']:
-                        logger.info(f"Calculating NDVI for {product['product_id']}")
-                        ndvi_data = ndvi_calculator.calculate_ndvi_from_metadata(
-                            image_id=image_id,
-                            product_id=product['product_id'],
-                            cloud_coverage=product['cloud_coverage'],
-                            center_point=product.get('center_point')
-                        )
-                        supabase_service.insert_ndvi_data(ndvi_data)
-                    
-                    # Calculate NDWI
-                    if not indices_status['has_ndwi']:
-                        logger.info(f"Calculating NDWI for {product['product_id']}")
-                        ndwi_data = ndwi_calculator.calculate_ndwi_from_metadata(
-                            image_id=image_id,
-                            product_id=product['product_id'],
-                            cloud_coverage=product['cloud_coverage'],
-                            center_point=product.get('center_point')
-                        )
-                        supabase_service.insert_ndwi_data(ndwi_data)
-                    
-                    processed_count += 1
-                    logger.info(f"✅ Processed {product['product_id']}")
-                    
-                except Exception as e:
-                    logger.error(f"Error processing product {product.get('product_id')}: {str(e)}")
-                    continue
-            
-            logger.info("=" * 80)
-            logger.info(f"✅ Scheduler job completed successfully")
-            logger.info(f"   Products found: {len(products)}")
-            logger.info(f"   Products saved: {saved_count}")
-            logger.info(f"   Products processed: {processed_count}")
-            logger.info("=" * 80)
+            self._save_statistics_to_db(stats, bbox)
             
             self.successful_runs += 1
+            logger.info("✅ Scheduler job completed successfully")
             
         except Exception as e:
             logger.error(f"❌ Scheduler job failed: {str(e)}", exc_info=True)
             self.failed_runs += 1
-    
+            
+    def _save_statistics_to_db(self, stats: dict, bbox: List[float]):
+        """
+        Save statistical data to Supabase 'region_statistics' table.
+        """
+        # Group by date
+        dates = set()
+        for item in stats.get('ndvi', []):
+            dates.add(item['date'].split('T')[0])
+            
+        count = 0
+        for date_str in dates:
+            # Find stats for this date
+            ndvi_stat = next((s for s in stats['ndvi'] if s['date'].startswith(date_str)), {})
+            ndwi_stat = next((s for s in stats['ndwi'] if s['date'].startswith(date_str)), {})
+            
+            if not ndvi_stat and not ndwi_stat:
+                continue
+            
+            # Create Polygon WKT for bbox
+            # bbox = [min_lon, min_lat, max_lon, max_lat]
+            polygon_wkt = f"POLYGON(({bbox[0]} {bbox[1]}, {bbox[2]} {bbox[1]}, {bbox[2]} {bbox[3]}, {bbox[0]} {bbox[3]}, {bbox[0]} {bbox[1]}))"
+
+            # Prepare Data Entry
+            entry = {
+                "region_name": "Trnava", # TODO: Make dynamic if multiple regions
+                "date": date_str,
+                "bbox": polygon_wkt,
+                
+                # NDVI
+                "ndvi_mean": ndvi_stat.get('mean'),
+                "ndvi_min": ndvi_stat.get('min'),
+                "ndvi_max": ndvi_stat.get('max'),
+                "ndvi_std": ndvi_stat.get('stDev'),
+                "ndvi_sample_count": ndvi_stat.get('sample_count'),
+                
+                # NDWI
+                "ndwi_mean": ndwi_stat.get('mean'),
+                "ndwi_min": ndwi_stat.get('min'),
+                "ndwi_max": ndwi_stat.get('max'),
+                "ndwi_std": ndwi_stat.get('stDev'),
+                "ndwi_sample_count": ndwi_stat.get('sample_count'),
+                
+                "provider": "Sentinel Hub Statistical API"
+            }
+            
+            # Insert
+            # We use upsert if possible, or just insert. 
+            # Sentinel Hub might return multiple entries for same day if orbits overlap? 
+            # Usually one per day for aggregated.
+            try:
+                # Upsert based on region_name + date to avoid duplicates
+                supabase_service.client.table('region_statistics').upsert(entry, on_conflict='region_name, date').execute()
+                count += 1
+                logger.info(f"Saved stats for {date_str}")
+            except Exception as e:
+                logger.error(f"Failed to save stats for {date_str}: {e}")
+                
+        logger.info(f"Total days saved: {count}")
+
     def start(self):
         """Start the scheduler"""
         if not settings.SCHEDULER_ENABLED:
@@ -167,8 +172,6 @@ class SatelliteDataScheduler:
         try:
             logger.info("🚀 Starting Satellite Data Scheduler")
             logger.info(f"   Interval: Every {settings.SCHEDULER_INTERVAL_HOURS} hours")
-            logger.info(f"   Search bounds: {settings.DEFAULT_SEARCH_BOUNDS}")
-            logger.info(f"   Max cloud coverage: {settings.DEFAULT_CLOUD_MAX}%")
             
             self.scheduler = AsyncIOScheduler()
             
@@ -214,28 +217,6 @@ class SatelliteDataScheduler:
         except Exception as e:
             logger.error(f"Error stopping scheduler: {str(e)}")
             raise
-    
-    def get_status(self) -> dict:
-        """Get scheduler status"""
-        next_run = None
-        if self.scheduler and self.is_running:
-            job = self.scheduler.get_job('fetch_sentinel_data')
-            if job and job.next_run_time:
-                next_run = job.next_run_time.isoformat()
-        
-        return {
-            "enabled": settings.SCHEDULER_ENABLED,
-            "running": self.is_running,
-            "interval_hours": settings.SCHEDULER_INTERVAL_HOURS,
-            "last_run": self.last_run.isoformat() if self.last_run else None,
-            "next_run": next_run,
-            "total_runs": self.total_runs,
-            "successful_runs": self.successful_runs,
-            "failed_runs": self.failed_runs,
-            "search_bounds": settings.DEFAULT_SEARCH_BOUNDS,
-            "max_cloud_coverage": settings.DEFAULT_CLOUD_MAX
-        }
-
 
 # Singleton instance
 satellite_scheduler = SatelliteDataScheduler()

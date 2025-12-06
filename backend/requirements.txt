@@ -6,3 +6,5 @@ sentinelhub
 supabase
 sentinelsat
 pydantic
+apscheduler
+shapely

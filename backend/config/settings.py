@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     
     # Scheduler
     SCHEDULER_ENABLED: bool = True
-    SCHEDULER_INTERVAL_HOURS: int = 6
-    DEFAULT_SEARCH_BOUNDS: str = "POLYGON((12 48, 16 48, 16 52, 12 52, 12 48))"  # Central Europe default
+    SCHEDULER_INTERVAL_HOURS: int = 4
+    DEFAULT_SEARCH_BOUNDS: str = "POLYGON((17.50 48.30, 17.70 48.30, 17.70 48.45, 17.50 48.45, 17.50 48.30))"  # Trnava, Slovakia
     DEFAULT_CLOUD_MAX: float = 30.0
     PROCESS_HISTORICAL_DATA: bool = False
     
@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     COPERNICUS_USERNAME: str = ""
     COPERNICUS_PASSWORD: str = ""
     
+    # Sentinel Hub
+    SH_CLIENT_ID: str = ""
+    SH_CLIENT_SECRET: str = ""
+
     # MapTiler
     MAPTILER_API_KEY: str = ""
     

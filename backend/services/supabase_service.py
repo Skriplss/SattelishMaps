@@ -276,6 +276,20 @@ class SupabaseService:
             logger.error(f"Error generating area summary: {str(e)}")
             raise
     
+    def insert_region_statistics(self, data: Dict[str, Any]) -> Dict:
+        """Insert region statistics (NDVI/NDWI)"""
+        try:
+            response = self.client.table('region_statistics')\
+                .insert(data)\
+                .execute()
+            
+            logger.info(f"Inserted statistics for {data.get('region_name')} on {data.get('date')}")
+            return response.data[0] if response.data else {}
+            
+        except Exception as e:
+            logger.error(f"Error inserting region statistics: {str(e)}")
+            raise
+
     def insert_ndvi_data(self, data: Dict[str, Any]) -> Dict:
         """Insert NDVI calculation data"""
         try:
