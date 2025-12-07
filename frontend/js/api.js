@@ -133,96 +133,6 @@ async function fetchSatelliteData(bounds, dateRange = {}, maxCloudCoverage = 100
 }
 
 /*
-   ФУНКЦИЯ: fetchRegionStatistics
-   
-   Что делает: Получает статистику региона для конкретной даты и индекса
-   
-   Параметры:
-   - date: дата в формате YYYY-MM-DD
-   - indexType: тип индекса (ndvi, ndwi, ndbi, moisture)
-   - regionName: название региона (опционально)
-   
-   Возвращает: Promise с GeoJSON данными для визуализации
-*/
-async function fetchRegionStatistics(date, indexType, regionName = null) {
-    console.log('📊 Fetching region statistics...');
-    console.log('  Date:', date);
-    console.log('  Index type:', indexType);
-    console.log('  Region:', regionName || 'all');
-
-    if (USE_MOCK_DATA) {
-        await delay(500);
-
-        // Mock GeoJSON data
-        const mockGeoJSON = {
-            type: 'FeatureCollection',
-            features: [
-                {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [[
-                            [17.5, 48.3],
-                            [17.7, 48.3],
-                            [17.7, 48.5],
-                            [17.5, 48.5],
-                            [17.5, 48.3]
-                        ]]
-                    },
-                    properties: {
-                        region_name: 'Trnava',
-                        date: date,
-                        index_type: indexType.toUpperCase(),
-                        mean: Math.random() * 0.8,
-                        min: 0.1,
-                        max: 0.9,
-                        std: 0.2
-                    }
-                }
-            ]
-        };
-
-        console.log('✅ Region statistics ready (mock)');
-        return mockGeoJSON;
-    } else {
-        try {
-            const params = new URLSearchParams({
-                date: date,
-                index_type: indexType.toUpperCase()
-            });
-
-            if (regionName) {
-                params.append('region_name', regionName);
-            }
-
-            console.log('📤 Requesting region statistics:', params.toString());
-
-            const response = await fetch(`${API_BASE_URL}/statistics/region?${params.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-            }
-
-            const jsonResponse = await response.json();
-            // Backend returns wrapped response { status: 'success', data: {...} }
-            const geojsonData = jsonResponse.data || { type: 'FeatureCollection', features: [] };
-
-            console.log(`✅ Received region statistics: ${geojsonData.features?.length || 0} regions`);
-            return geojsonData;
-        } catch (error) {
-            console.error('❌ Error fetching region statistics:', error);
-            throw error;
-        }
-    }
-}
-
-/*
    ФУНКЦИЯ: fetchStatistics
    
    Что делает: Получает статистику для заданной области
@@ -233,7 +143,6 @@ async function fetchRegionStatistics(date, indexType, regionName = null) {
    Возвращает: Promise с объектом статистики
 */
 async function fetchStatistics(bounds) {
-
     console.log('📊 Fetching statistics...');
     console.log('  Bounds:', bounds);
 
@@ -385,13 +294,11 @@ function toRad(degrees) {
 const SatelliteAPI = {
     fetchSatelliteData,
     fetchStatistics,
-    fetchRegionStatistics,
     searchByCoordinates,
     USE_MOCK_DATA,
     MOCK_SATELLITE_DATA,
     MOCK_STATISTICS
 };
-
 
 // Делаем доступным глобально для тестирования в консоли
 window.SatelliteAPI = SatelliteAPI;
