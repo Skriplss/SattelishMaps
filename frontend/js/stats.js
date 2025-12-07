@@ -156,38 +156,130 @@ class StatsPanel {
         this.updateAIAnalysis(lang);
     }
 
-    renderChart(lang) {
+    async renderChart(lang) {
         if (!this.chart) return;
 
+        console.log('📈 Rendering chart...');
         const datasets = [];
-        const colors = ['#41A636', '#CA747D']; // Area 1 (Green-ish), Area 2 (Red-ish)
+        const colors = ['#41A636', '#CA747D', '#5D9CEC', '#F0AD4E'];
 
-        this.currentAreas.forEach((area, index) => {
-            const data = this.generateData(area.coordinates);
+        // Clear existing data while loading
+        this.chart.data.labels = [];
+        this.chart.data.datasets = [];
+        this.chart.update();
+
+        for (let index = 0; index < this.currentAreas.length; index++) {
+            const area = this.currentAreas[index];
             const color = colors[index % colors.length];
 
+            // Calculate center
+            const center = this.getPolygonCenter(area.coordinates);
+
+            // Try to identify region
+            const regionName = this.identifyRegion(center.lat, center.lng);
+            let data = [];
+            let timestamps = [];
+
+            if (regionName) {
+                console.log(`📍 Area ${index + 1} identified as ${regionName}`);
+                // Fetch real data
+                try {
+                    const history = await SatelliteAPI.fetchRegionHistory(regionName, this.activeLayer);
+                    if (history && history.length > 0) {
+                        data = history.map(h => h.mean); // Use mean value
+                        timestamps = history.map(h => h.date);
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch history:', e);
+                }
+            }
+
+            // Fallback to mock/simulated data if no real data found
+            if (data.length === 0) {
+                console.log(`⚠️ No real data for Area ${index + 1}, using simulation`);
+                data = this.generateData(area.coordinates);
+                // Generate dummy months
+                timestamps = translations[lang]['chart.months'];
+            }
+
+            // Update labels if this is the first dataset (or if we have real dates now)
+            // Ideally we should sync X-axis, but for now take the first valid one
+            if (timestamps.length > 0 && (this.chart.data.labels.length === 0 || regionName)) {
+                // If real data, format dates
+                if (regionName) {
+                    this.chart.data.labels = timestamps.map(t => new Date(t).toLocaleDateString(lang, { month: 'short', day: 'numeric' }));
+                } else {
+                    this.chart.data.labels = timestamps;
+                }
+            }
+
             datasets.push({
-                label: `${translations[lang][`chart.${this.activeLayer}`]} - Area ${index + 1}`,
+                label: `${translations[lang][`chart.${this.activeLayer}`]} - ${regionName || `Area ${index + 1}`}`,
                 data: data,
                 borderColor: color,
-                backgroundColor: color + '33', // Transparent fill
+                backgroundColor: color + '33',
                 borderWidth: 2,
                 tension: 0.4,
                 fill: false
             });
-        });
+        }
 
         this.chart.data.datasets = datasets;
         this.chart.update();
     }
 
+    getPolygonCenter(coords) {
+        if (!coords || coords.length === 0) return { lat: 0, lng: 0 };
+        // coords is array of [lng, lat] (GeoJSON) or {lat, lng} (Leaflet/Mapbox)
+        // Assuming flat array [lng, lat] from earlier context, or check structure
+        // In addSlovakiaMask it was [ [lng, lat], ... ]
+
+        let sumLat = 0, sumLng = 0;
+        let count = 0;
+
+        // Handle nested arrays like [[lng, lat], [lng, lat]]
+        // or Leaflet {lat, lng}
+        const points = Array.isArray(coords[0]) ? coords : coords;
+
+        points.forEach(p => {
+            if (Array.isArray(p)) {
+                sumLng += p[0];
+                sumLat += p[1];
+            } else {
+                sumLat += p.lat;
+                sumLng += p.lng;
+            }
+            count++;
+        });
+
+        return { lat: sumLat / count, lng: sumLng / count };
+    }
+
+    identifyRegion(lat, lng) {
+        const regions = [
+            { name: "Bratislava", lat: 48.1486, lng: 17.1077 },
+            { name: "Kosice", lat: 48.7164, lng: 21.2611 },
+            { name: "Zilina", lat: 49.2195, lng: 18.7408 },
+            { name: "Banska Bystrica", lat: 48.7363, lng: 19.1462 },
+            { name: "Presov", lat: 48.9973, lng: 21.2393 }
+        ];
+
+        for (const region of regions) {
+            const dist = Math.sqrt(Math.pow(lat - region.lat, 2) + Math.pow(lng - region.lng, 2));
+            // Approx distance in degrees. 0.2 deg ~ 20km
+            if (dist < 0.25) {
+                return region.name;
+            }
+        }
+        return null;
+    }
+
     generateData(coordinates) {
         // Simulate data based on coordinates hash
-        const seed = coordinates.reduce((a, b) => a + b, 0);
+        // Modified to return 12 points
         const data = [];
         for (let i = 0; i < 12; i++) {
-            // Randomish but consistent for same area
-            const val = 0.3 + (Math.sin(i * 0.5 + seed) * 0.2) + (Math.random() * 0.1);
+            const val = 0.3 + (Math.random() * 0.5);
             data.push(Math.max(0, Math.min(1, val)));
         }
         return data;

@@ -469,12 +469,44 @@ class SupabaseService:
             # Get unique dates and sort
             dates = sorted(set(row['date'] for row in response.data if 'date' in row))
             
-            logger.info(f"Found {len(dates)} available dates")
+            # logger.info(f"Found {len(dates)} available dates")
             return dates
             
         except Exception as e:
             logger.error(f"Error fetching available dates: {str(e)}")
             raise
+
+    def get_region_statistics_timeseries(
+        self,
+        region_name: str,
+        index_type: str,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        limit: int = 100
+    ) -> List[Dict]:
+        """Get timeseries data for region and index"""
+        try:
+            query = self.client.table('region_statistics')\
+                .select('*')\
+                .eq('region_name', region_name)\
+                .eq('index_type', index_type)\
+                .order('date', desc=False)
+            
+            if date_from:
+                query = query.gte('date', date_from)
+            if date_to:
+                query = query.lte('date', date_to)
+                
+            if limit:
+                query = query.limit(limit)
+                
+            response = query.execute()
+            return response.data
+            
+        except Exception as e:
+            logger.error(f"Error fetching region timeseries: {str(e)}")
+            raise
+
     
     def check_image_has_indices(self, image_id: str) -> Dict[str, bool]:
 

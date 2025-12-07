@@ -80,34 +80,27 @@ async function fetchSatelliteData(bounds, dateRange = {}, maxCloudCoverage = 100
     console.log('  Date range:', dateRange);
     console.log('  Max cloud coverage:', maxCloudCoverage);
 
+    console.log('🛰️ Satellite Data Request:', { bounds, dateRange, maxCloudCoverage });
+
     if (USE_MOCK_DATA) {
-        // Имитируем задержку сети (как будто данные идут от сервера)
-        await delay(1000); // Ждем 1 секунду
-
-        // Фильтруем mock-данные по облачности
-        const filtered = MOCK_SATELLITE_DATA.filter(
-            item => item.cloudCoverage <= maxCloudCoverage
-        );
-
-        console.log(`✅ Found ${filtered.length} satellite images`);
-        return filtered;
+        await delay(800);
+        console.log('✅ Satellite data ready (mock)');
+        return MOCK_SATELLITE_DATA;
     } else {
-        // Use DB Search (GET /bounds/search) instead of Copernicus (POST /search)
-        const params = new URLSearchParams({
-            min_lat: bounds._sw.lat,
-            max_lat: bounds._ne.lat,
-            min_lon: bounds._sw.lng,
-            max_lon: bounds._ne.lng,
-            cloud_max: maxCloudCoverage,
-            limit: 100
-        });
-
-        if (dateRange.from) params.append('date_from', dateRange.from);
-        if (dateRange.to) params.append('date_to', dateRange.to);
-
-        console.log('📤 Requesting DB data:', params.toString());
-
         try {
+            const params = new URLSearchParams({
+                min_lat: bounds.south,
+                max_lat: bounds.north,
+                min_lon: bounds.west,
+                max_lon: bounds.east,
+                cloud_max: maxCloudCoverage
+            });
+
+            if (dateRange.start) params.append('date_from', dateRange.start);
+            if (dateRange.end) params.append('date_to', dateRange.end);
+
+            console.log('📤 Requesting satellite data:', params.toString());
+
             const response = await fetch(`${API_BASE_URL}/satellite-data/bounds/search?${params.toString()}`, {
                 method: 'GET',
                 headers: {
@@ -116,19 +109,46 @@ async function fetchSatelliteData(bounds, dateRange = {}, maxCloudCoverage = 100
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
 
             const jsonResponse = await response.json();
-            // Backend returns wrapped response { status: 'success', data: [...] }
-            const data = jsonResponse.data || [];
-
-            console.log(`✅ Received ${data.length} images from DB`);
-            return data;
+            const images = jsonResponse.data || [];
+            console.log(`✅ Received ${images.length} images`);
+            return images;
         } catch (error) {
-            console.error('❌ Error fetching from DB:', error);
+            console.error('❌ Error fetching satellite data:', error);
             throw error;
         }
+    }
+}
+
+/*
+   Function: fetchRegionHistory
+   Fetches historical statistics timeseries for a region
+*/
+async function fetchRegionHistory(regionName, indexType) {
+    console.log(`📊 Fetching history for ${regionName} (${indexType})...`);
+
+    try {
+        const params = new URLSearchParams({
+            index_type: indexType,
+            limit: 100
+        });
+
+        const response = await fetch(`${API_BASE_URL}/statistics/timeseries/${regionName}?${params.toString()}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const json = await response.json();
+        return json.data || [];
+    } catch (error) {
+        console.error('❌ Error fetching history:', error);
+        return [];
     }
 }
 
@@ -294,6 +314,7 @@ function toRad(degrees) {
 const SatelliteAPI = {
     fetchSatelliteData,
     fetchStatistics,
+    fetchRegionHistory,
     searchByCoordinates,
     USE_MOCK_DATA,
     MOCK_SATELLITE_DATA,
