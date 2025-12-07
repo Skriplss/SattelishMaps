@@ -9,8 +9,6 @@ import logging
 from utils.response_formatter import success_response, created_response
 from utils.error_handlers import NotFoundError, SupabaseError
 from services.supabase_service import supabase_service
-from services.ndvi_calculator import ndvi_calculator
-from services.ndwi_calculator import ndwi_calculator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -107,73 +105,22 @@ async def get_all_indices(image_id: UUID):
         raise SupabaseError(f"Failed to fetch indices: {str(e)}")
 
 
-@router.post("/indices/calculate/{image_id}", response_model=dict, status_code=status.HTTP_201_CREATED)
+
+
+# DISABLED: Manual indices calculation - indices are fetched from Sentinel Hub automatically
+@router.post("/indices/calculate/{image_id}", response_model=dict, status_code=status.HTTP_501_NOT_IMPLEMENTED)
 async def calculate_indices(image_id: UUID, force: bool = False):
     """
     Calculate NDVI and NDWI indices for a specific satellite image
     
-    - **image_id**: UUID of the satellite image
-    - **force**: Force recalculation even if indices already exist
+    NOTE: This endpoint is disabled. Indices are automatically fetched from Sentinel Hub.
     """
-    try:
-        logger.info(f"Calculating indices for image: {image_id}")
-        
-        # Get image info
-        image = supabase_service.get_satellite_image_by_id(str(image_id))
-        if not image:
-            raise NotFoundError(f"Satellite image {image_id} not found")
-        
-        # Check if indices already exist
-        indices_status = supabase_service.check_image_has_indices(str(image_id))
-        
-        if indices_status['has_both'] and not force:
-            return success_response(
-                data={
-                    "message": "Indices already calculated",
-                    "ndvi": supabase_service.get_ndvi_data(str(image_id)),
-                    "ndwi": supabase_service.get_ndwi_data(str(image_id))
-                },
-                message="Indices already exist. Use force=true to recalculate."
-            )
-        
-        # Extract center point
-        center_point = None
-        if image.get('center_point'):
-            # Parse PostGIS POINT format
-            # TODO: Implement proper parsing
-            center_point = {"lat": 0, "lon": 0}
-        
-        # Calculate NDVI
-        ndvi_data = ndvi_calculator.calculate_ndvi_from_metadata(
-            image_id=str(image_id),
-            product_id=image['product_id'],
-            cloud_coverage=image['cloud_coverage'],
-            center_point=center_point
-        )
-        ndvi_result = supabase_service.insert_ndvi_data(ndvi_data)
-        
-        # Calculate NDWI
-        ndwi_data = ndwi_calculator.calculate_ndwi_from_metadata(
-            image_id=str(image_id),
-            product_id=image['product_id'],
-            cloud_coverage=image['cloud_coverage'],
-            center_point=center_point
-        )
-        ndwi_result = supabase_service.insert_ndwi_data(ndwi_data)
-        
-        return created_response(
-            data={
-                "ndvi": ndvi_result,
-                "ndwi": ndwi_result
-            },
-            message="Indices calculated and saved successfully"
-        )
-        
-    except NotFoundError:
-        raise
-    except Exception as e:
-        logger.error(f"Error calculating indices: {str(e)}")
-        raise SupabaseError(f"Failed to calculate indices: {str(e)}")
+    raise HTTPException(
+        status_code=501,
+        detail="Manual indices calculation is disabled. Indices are fetched automatically from Sentinel Hub."
+    )
+
+
 
 
 @router.get("/indices/status/{image_id}", response_model=dict)

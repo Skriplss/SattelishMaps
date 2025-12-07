@@ -4,6 +4,7 @@ API endpoints for satellite data operations
 from fastapi import APIRouter, Query, Depends, HTTPException, status
 from typing import List, Optional
 from uuid import UUID
+from datetime import date
 import logging
 
 from models.satellite_image import (
@@ -16,7 +17,6 @@ from utils.validators import SatelliteSearchRequest, SatelliteFilterParams
 from utils.response_formatter import success_response, paginated_response, created_response
 from utils.error_handlers import NotFoundError, SupabaseError, CopernicusAPIError
 from services.supabase_service import supabase_service
-from services.copernicus_service import copernicus_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -94,58 +94,21 @@ async def get_satellite_image(image_id: UUID):
         raise SupabaseError(f"Failed to fetch satellite image: {str(e)}")
 
 
-@router.post("/satellite-data/search", response_model=dict)
-async def search_copernicus(request: SatelliteSearchRequest):
-    """
-    Search for Sentinel-2 satellite images in Copernicus API and save to database
-    
-    - **date_from**: Start date for search
-    - **date_to**: End date for search
-    - **bounds**: Bounding box coordinates
-    - **cloud_max**: Maximum cloud coverage percentage
-    - **platform**: Satellite platform (default: Sentinel-2)
-    """
-    try:
-        logger.info(f"Searching Copernicus Sentinel-2: {request.date_from} to {request.date_to}")
-        
-        # Search in Copernicus for Sentinel-2
-        products = copernicus_service.search_sentinel2_products(
-            area=request.bounds.to_wkt(),
-            date_range=(request.date_from, request.date_to),
-            cloud_coverage_max=request.cloud_max,
-            limit=20  # Limit to 20 products for MVP
-        )
-        
-        if not products:
-            return success_response(
-                data=[],
-                message="No products found matching criteria",
-                meta={"count": 0}
-            )
-        
-        # Save products to Supabase
-        # Returns dict {product_id: uuid}
-        saved_map = copernicus_service.save_to_supabase(products)
-        saved_count = len(saved_map)
-        
-        # Enrich products with UUIDs from database
-        for product in products:
-            p_id = product.get('product_id')
-            if p_id and p_id in saved_map:
-                product['id'] = saved_map[p_id]
-        
-        return success_response(
-            data=products,
-            message=f"Found {len(products)} products, saved {saved_count} to database",
-            meta={
-                "count": len(products),
-                "saved": saved_count
-            }
-        )
-        
-    except Exception as e:
-        logger.error(f"Error searching Copernicus: {str(e)}")
-        raise CopernicusAPIError(f"Failed to search Copernicus: {str(e)}")
+
+# DISABLED: Copernicus search endpoint - use Sentinel Hub scheduler instead
+# @router.post("/satellite-data/search", response_model=dict)
+# async def search_copernicus(request: SatelliteSearchRequest):
+#     """
+#     Search for Sentinel-2 satellite images in Copernicus API and save to database
+#     
+#     NOTE: This endpoint is disabled. Data is automatically fetched via Sentinel Hub scheduler.
+#     """
+#     raise HTTPException(
+#         status_code=501,
+#         detail="Copernicus search is disabled. Data is fetched automatically via scheduler."
+#     )
+
+
 
 
 @router.post("/satellite-data", response_model=dict, status_code=status.HTTP_201_CREATED)
