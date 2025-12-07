@@ -363,7 +363,121 @@ class SupabaseService:
             logger.error(f"Error fetching latest processed date: {str(e)}")
             return None
     
+    
+    def get_region_statistics_geojson(
+        self,
+        date: str,
+        index_type: str,
+        region_name: Optional[str] = None
+    ) -> Dict:
+        """
+        Get region statistics as GeoJSON FeatureCollection
+        
+        Converts PostGIS bbox to GeoJSON geometry
+        """
+        try:
+            # Build query
+            query = self.client.table('region_statistics').select('*')
+            
+            # Apply filters
+            query = query.eq('date', date)
+            query = query.eq('index_type', index_type)
+            
+            if region_name:
+                query = query.eq('region_name', region_name)
+            
+            response = query.execute()
+            
+            if not response.data:
+                logger.warning(f"No data found for date={date}, index={index_type}")
+                return {"type": "FeatureCollection", "features": []}
+            
+            # Convert to GeoJSON
+            features = []
+            for row in response.data:
+                # Use PostGIS function to convert bbox to GeoJSON
+                # The bbox is stored as GEOGRAPHY(POLYGON)
+                try:
+                    geom_query = self.client.rpc(
+                        'st_asgeojson',
+                        {'geom': row['bbox']}
+                    ).execute()
+                    
+                    # RPC returns JSON string, need to parse it
+                    import json
+                    geometry = json.loads(geom_query.data) if geom_query.data else None
+                    
+                except Exception as e:
+                    logger.warning(f"Error converting bbox to GeoJSON: {str(e)}")
+                    geometry = None
+                
+                # Fallback: if RPC doesn't work, try to parse bbox manually
+                if not geometry and row.get('bbox'):
+                    # bbox is in WKB format, we need to convert it
+                    # For now, return a simple structure
+                    logger.warning(f"Could not convert bbox to GeoJSON for row {row['id']}")
+                    geometry = {
+                        "type": "Polygon",
+                        "coordinates": [[]]  # Empty for now
+                    }
+                
+                feature = {
+                    "type": "Feature",
+                    "geometry": geometry,
+                    "properties": {
+                        "id": row['id'],
+                        "region_name": row['region_name'],
+                        "date": row['date'],
+                        "index_type": row['index_type'],
+                        "mean": float(row['mean']) if row['mean'] else None,
+                        "min": float(row['min']) if row['min'] else None,
+                        "max": float(row['max']) if row['max'] else None,
+                        "std": float(row['std']) if row['std'] else None,
+                        "sample_count": row['sample_count']
+                    }
+                }
+                features.append(feature)
+            
+            geojson = {
+                "type": "FeatureCollection",
+                "features": features
+            }
+            
+            logger.info(f"Converted {len(features)} regions to GeoJSON")
+            return geojson
+            
+        except Exception as e:
+            logger.error(f"Error getting region statistics as GeoJSON: {str(e)}")
+            raise
+    
+    def get_available_dates(
+        self,
+        index_type: Optional[str] = None,
+        region_name: Optional[str] = None
+    ) -> List[str]:
+        """Get list of available dates in region_statistics"""
+        try:
+            query = self.client.table('region_statistics').select('date')
+            
+            if index_type:
+                query = query.eq('index_type', index_type)
+            if region_name:
+                query = query.eq('region_name', region_name)
+            
+            response = query.execute()
+            
+            # Get unique dates and sort
+            dates = sorted(set(row['date'] for row in response.data if 'date' in row))
+            
+            logger.info(f"Found {len(dates)} available dates")
+            return dates
+            
+        except Exception as e:
+            logger.error(f"Error fetching available dates: {str(e)}")
+            raise
+    
     def check_image_has_indices(self, image_id: str) -> Dict[str, bool]:
+
         """Check if image has NDVI and NDWI data calculated"""
         try:
             has_ndvi = self.get_ndvi_data(image_id) is not None

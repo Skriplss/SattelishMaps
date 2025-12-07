@@ -188,6 +188,34 @@ function initEventListeners() {
       applyBtn.addEventListener('click', applyFilters);
    }
 
+   // Play Button - Load data for selected date and active layer
+   const playBtn = document.getElementById('play-btn');
+   if (playBtn) {
+      playBtn.addEventListener('click', async () => {
+         const activeLayerBtn = document.querySelector('.layer-btn.active');
+
+         if (!activeLayerBtn) {
+            alert('Пожалуйста, выберите индекс (NDVI, NDWI, NDBI или MOISTURE)');
+            return;
+         }
+
+         const layerType = activeLayerBtn.getAttribute('data-layer');
+         const mapDate = document.getElementById('map-date');
+
+         if (!mapDate || !mapDate.value) {
+            alert('Пожалуйста, выберите дату');
+            return;
+         }
+
+         console.log(`▶️ Play button clicked: ${layerType} for ${mapDate.value}`);
+
+         // Reload layer with current date
+         if (window.satelliteLayers) {
+            await window.satelliteLayers.showLayer(layerType);
+         }
+      });
+   }
+
    // Layer Toggles
    const layerBtns = document.querySelectorAll('.layer-btn');
    layerBtns.forEach(btn => {

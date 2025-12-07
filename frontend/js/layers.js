@@ -108,105 +108,76 @@ class SatelliteLayers {
     }
 
     /**
-     * Show a specific layer type (ndvi, ndwi) using Vector Data (Coverage Map)
+     * Show a specific layer type (ndvi, ndwi, ndbi, moisture) using Region Statistics
      * @param {string} layerType
      */
     async showLayer(layerType) {
         console.log(`👁️ Showing layer: ${layerType}`);
 
         try {
-            // 1. Get current bounds/filters
-            const bounds = this.map.getBounds();
-            const dateFromInput = document.getElementById('date-from');
-            const dateToInput = document.getElementById('date-to');
+            // 1. Get current date from calendar
             const mapDateInput = document.getElementById('map-date');
 
-            let from = dateFromInput?.value || '2024-01-01';
-            let to = dateToInput?.value;
-
-            if (mapDateInput && mapDateInput.value) {
-                from = mapDateInput.value;
-                to = mapDateInput.value;
+            if (!mapDateInput || !mapDateInput.value) {
+                console.error('❌ No date selected');
+                alert('Пожалуйста, выберите дату');
+                return;
             }
+
+            const selectedDate = mapDateInput.value;
+            console.log(`📅 Selected date: ${selectedDate}`);
 
             // 2. Clear old layers
             this.clearAll();
 
-            // 3. Fetch data (Metadata from Backend)
+            // 3. Show loader
+            const loader = document.getElementById('loader');
+            if (loader) loader.classList.remove('hidden');
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = 'wait';
 
-            // Calls our Local Backend (which proxies SentinelHub Catalog)
-            const data = await window.SatelliteAPI.fetchSatelliteData(bounds, { from: from, to: to });
+            // 4. Fetch region statistics from backend
+            const geojsonData = await window.SatelliteAPI.fetchRegionStatistics(
+                selectedDate,
+                layerType,
+                null  // region_name = null (get all regions)
+            );
 
+            // 5. Hide loader
+            if (loader) loader.classList.add('hidden');
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = '';
 
-            if (data && data.length > 0) {
-                // Vector Visualization Strategy
-                // We create a GeoJSON feature collection from the scene metadata
+            if (geojsonData && geojsonData.features && geojsonData.features.length > 0) {
+                console.log(`🗺️ Rendering ${geojsonData.features.length} regions`);
 
-                const features = data.map(scene => {
-                    // Determine value based on layer type
-                    let value = null;
-                    let properties = { ...scene };
+                // Add vector layer with GeoJSON data
+                this.addVectorLayerFromRegionStats(layerType, geojsonData);
 
-                    // TODO: In the future, Backend should return actual cached NDVI/NDWI stats.
-                    // For now, we simulate values or use available props if SentinelHub provided them.
-                    if (layerType === 'ndvi') {
-                        value = scene.ndvi_data?.[0]?.ndvi_mean ?? (Math.random() * 0.8);
-                    } else if (layerType === 'ndwi') {
-                        value = scene.ndwi_data?.[0]?.ndwi_mean ?? (Math.random() * 0.8 - 0.4);
-                    }
-
-                    properties.value = value;
-                    properties.layerType = layerType;
-
-                    // Geometry Construction
-                    let geometry = scene.geometry; // Use exact geometry from SentinelHub if available
-
-                    if (!geometry) {
-                        // Fallback geometry if simple point
-                        // ... (bounds logic)
-                        const ne = bounds.getNorthEast();
-                        const sw = bounds.getSouthWest();
-                        geometry = {
-                            type: 'Polygon',
-                            coordinates: [[
-                                [sw.lng, sw.lat],
-                                [ne.lng, sw.lat],
-                                [ne.lng, ne.lat],
-                                [sw.lng, ne.lat],
-                                [sw.lng, sw.lat]
-                            ]]
-                        };
-                    }
-
-                    return {
-                        type: 'Feature',
-                        geometry: geometry,
-                        properties: properties
-                    };
-                });
-
-                const geojson = {
-                    type: 'FeatureCollection',
-                    features: features
-                };
-
-                console.log('🗺️ Rendering Vector Data:', geojson);
-                this.addVectorLayer(layerType, geojson, layerType);
-                this.currentScene = data[0]; // For popups
+                // Show legend
+                this.showLegend(layerType);
 
             } else {
-                console.warn('No satellite data found for this area/date.');
+                console.warn('⚠️ No data found for this date/index');
+                alert(`Нет данных для ${layerType.toUpperCase()} на дату ${selectedDate}`);
             }
 
         } catch (error) {
-            console.error('Failed to show layer:', error);
+            console.error('❌ Failed to show layer:', error);
+
+            // Hide loader
+            const loader = document.getElementById('loader');
+            if (loader) loader.classList.add('hidden');
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = '';
+
+            alert(`Ошибка загрузки данных: ${error.message}`);
         }
     }
 
-    addVectorLayer(id, geojson, type) {
+    /**
+     * Add vector layer from region statistics GeoJSON
+     * @param {string} id - Layer ID
+     * @param {object} geojson - GeoJSON FeatureCollection
+     */
+    addVectorLayerFromRegionStats(id, geojson) {
         if (!this.map) return;
         this.removeLayer(id);
 
@@ -216,45 +187,104 @@ class SatelliteLayers {
                 data: geojson
             });
 
-            // Color scale logic
+            // Determine color scale based on index type
+            const indexType = geojson.features[0]?.properties?.index_type?.toLowerCase() || id;
+
             let fillColor = [
                 'interpolate',
                 ['linear'],
-                ['get', 'value'],
+                ['get', 'mean'],  // Use 'mean' property from region statistics
                 -1, '#000000'
             ];
 
-            if (type === 'ndvi') {
+            // Color scales for different indices
+            if (indexType === 'ndvi') {
                 fillColor.push(
-                    0, '#D73027',
-                    0.2, '#FEE090',
-                    0.5, '#41A636',
-                    0.8, '#006400'
+                    -0.1, '#8B4513',  // Bare soil/rock
+                    0, '#D2B48C',      // Very sparse vegetation
+                    0.2, '#FEE090',    // Sparse vegetation
+                    0.4, '#91CF60',    // Moderate vegetation
+                    0.6, '#41A636',    // Dense vegetation
+                    0.8, '#006400'     // Very dense vegetation
                 );
-            } else {
+            } else if (indexType === 'ndwi') {
                 fillColor.push(
-                    -0.5, '#D73027',
-                    0, '#FFFFFF',
-                    0.2, '#0000CD',
-                    0.5, '#000080'
+                    -0.5, '#8B4513',   // Dry soil
+                    -0.2, '#D2B48C',   // Moist soil
+                    0, '#87CEEB',      // Wet soil
+                    0.2, '#4169E1',    // Shallow water
+                    0.5, '#0000CD',    // Deep water
+                    1.0, '#000080'     // Very deep water
+                );
+            } else if (indexType === 'ndbi') {
+                fillColor.push(
+                    -0.5, '#0000CD',   // Water
+                    -0.2, '#228B22',   // Vegetation
+                    0, '#D2B48C',      // Bare soil
+                    0.2, '#A0522D',    // Light urban
+                    0.4, '#8B4513',    // Dense urban
+                    0.6, '#800000'     // Very dense urban
+                );
+            } else if (indexType === 'moisture') {
+                fillColor.push(
+                    -0.8, '#8B0000',   // Extreme stress
+                    -0.6, '#CD5C5C',   // High stress
+                    -0.4, '#F08080',   // Moderate stress
+                    -0.2, '#FFFF00',   // Low stress
+                    0, '#90EE90',      // Normal
+                    0.2, '#00FFFF',    // High moisture
+                    0.4, '#00008B'     // Very high moisture
                 );
             }
 
+            // Add fill layer
             this.map.addLayer({
                 id: id,
                 type: 'fill',
                 source: id,
                 paint: {
-                    'fill-color': fillColor, // Use the interpolated color
-                    'fill-opacity': 0.5, // Transparency to see map below
-                    'fill-outline-color': '#ffffff'
+                    'fill-color': fillColor,
+                    'fill-opacity': 0.6
+                }
+            });
+
+            // Add outline layer for better visibility
+            this.map.addLayer({
+                id: `${id}-outline`,
+                type: 'line',
+                source: id,
+                paint: {
+                    'line-color': '#ffffff',
+                    'line-width': 1,
+                    'line-opacity': 0.5
                 }
             });
 
             this.activeLayers.add(id);
+            this.activeLayers.add(`${id}-outline`);
+
+            // Show legend
+            this.showLegend(indexType);
+
+            console.log(`✅ Vector layer ${id} added with ${geojson.features.length} features`);
 
         } catch (e) {
-            console.error('Vector layer error:', e);
+            console.error('❌ Vector layer error:', e);
+        }
+    }
+
+    /**
+     * Show legend for the active layer
+     * @param {string} layerType 
+     */
+    showLegend(layerType) {
+        const legendContainer = document.getElementById('legend-container');
+        if (!legendContainer) return;
+
+        const legendHTML = this.getLegendHTML(layerType);
+        if (legendHTML) {
+            legendContainer.innerHTML = legendHTML;
+            legendContainer.classList.remove('hidden');
         }
     }
 
