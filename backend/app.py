@@ -10,7 +10,7 @@ import logging
 from config.settings import settings
 from utils.logger import setup_logging
 from utils.error_handlers import register_exception_handlers
-from api import satellite, statistics, indices, region_statistics
+from api import satellite, statistics, indices, region_statistics, wms
 from scheduler import satellite_scheduler
 
 
@@ -67,6 +67,7 @@ register_exception_handlers(app)
 
 # Register routers (order matters! More specific routes first)
 app.include_router(region_statistics.router, prefix="/api", tags=["Region Statistics"])
+app.include_router(wms.router, prefix="/api", tags=["WMS/Tiles"])
 app.include_router(satellite.router, prefix="/api", tags=["Satellite Data"])
 app.include_router(statistics.router, prefix="/api", tags=["Statistics"])
 app.include_router(indices.router, prefix="/api", tags=["Indices"])

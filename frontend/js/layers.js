@@ -108,7 +108,7 @@ class SatelliteLayers {
     }
 
     /**
-     * Show a specific layer type (ndvi, ndwi, ndbi, moisture) using Region Statistics
+     * Show a specific layer type (ndvi, ndwi, ndbi, moisture) using WMS tiles
      * @param {string} layerType
      */
     async showLayer(layerType) {
@@ -135,30 +135,23 @@ class SatelliteLayers {
             if (loader) loader.classList.remove('hidden');
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = 'wait';
 
-            // 4. Fetch region statistics from backend
-            const geojsonData = await window.SatelliteAPI.fetchRegionStatistics(
-                selectedDate,
-                layerType,
-                null  // region_name = null (get all regions)
-            );
+            // 4. Build WMS tile URL
+            const API_BASE_URL = window.SatelliteAPI?.API_BASE_URL || 'http://localhost:8000';
+            const tileUrl = `${API_BASE_URL}/api/wms/tile/{z}/{x}/{y}.png?date=${selectedDate}&index_type=${layerType.toUpperCase()}`;
 
-            // 5. Hide loader
+            console.log(`🗺️ Loading WMS tiles: ${tileUrl}`);
+
+            // 5. Add WMS raster layer
+            this.addRasterLayer(layerType, tileUrl, { opacity: 0.8 });
+
+            // 6. Show legend
+            this.showLegend(layerType);
+
+            // 7. Hide loader
             if (loader) loader.classList.add('hidden');
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = '';
 
-            if (geojsonData && geojsonData.features && geojsonData.features.length > 0) {
-                console.log(`🗺️ Rendering ${geojsonData.features.length} regions`);
-
-                // Add vector layer with GeoJSON data
-                this.addVectorLayerFromRegionStats(layerType, geojsonData);
-
-                // Show legend
-                this.showLegend(layerType);
-
-            } else {
-                console.warn('⚠️ No data found for this date/index');
-                alert(`Нет данных для ${layerType.toUpperCase()} на дату ${selectedDate}`);
-            }
+            console.log(`✅ WMS layer ${layerType} loaded successfully`);
 
         } catch (error) {
             console.error('❌ Failed to show layer:', error);
