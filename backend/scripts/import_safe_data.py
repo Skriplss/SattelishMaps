@@ -188,8 +188,7 @@ class SafeProductImporter:
             
             # Calculate NDVI
             if b04_path and b08_path:
-                logger.info(f"✅ Found bands for NDVI: {os.path.basename(b04_path)}, {os.path.basename(b08_path)}")
-                logger.info("Calculating REAL NDVI from bands (this may take a moment)...")
+                logger.info("Calculating NDVI from bands (this may take a moment)...")
                 try:
                     ndvi_data = ndvi_calculator.calculate_ndvi_from_bands(
                         nir_band_path=b08_path,
@@ -197,7 +196,7 @@ class SafeProductImporter:
                         image_id=image_id
                     )
                     supabase_service.insert_ndvi_data(ndvi_data)
-                    logger.info("✅ NDVI calculation complete")
+                    logger.info("NDVI calculation complete")
                 except Exception as e:
                     logger.error(f"Failed to calculate NDVI from bands: {e}")
             else:
@@ -212,8 +211,8 @@ class SafeProductImporter:
             
             # Calculate NDWI
             if b03_path and b08_path:
-                logger.info(f"✅ Found bands for NDWI: {os.path.basename(b03_path)}, {os.path.basename(b08_path)}")
-                logger.info("Calculating REAL NDWI from bands...")
+                logger.info(f"Found bands for NDWI: {os.path.basename(b03_path)}, {os.path.basename(b08_path)}")
+                logger.info("Calculating NDWI from bands...")
                 try:
                     ndwi_data = ndwi_calculator.calculate_ndwi_from_bands(
                         green_band_path=b03_path,
@@ -221,7 +220,7 @@ class SafeProductImporter:
                         image_id=image_id
                     )
                     supabase_service.insert_ndwi_data(ndwi_data)
-                    logger.info("✅ NDWI calculation complete")
+                    logger.info("NDWI calculation complete")
                 except Exception as e:
                     logger.error(f"Failed to calculate NDWI from bands: {e}")
             else:
@@ -234,7 +233,7 @@ class SafeProductImporter:
                 )
                 supabase_service.insert_ndwi_data(ndwi_data)
             
-            logger.info(f"✅ Successfully imported {product_data['product_id']}")
+            logger.info(f"Successfully imported {product_data['product_id']}")
             return True
             
         except Exception as e:
@@ -254,7 +253,6 @@ def main():
     
     if not products:
         print(f"No .SAFE directories found in {DATA_DIR}")
-        print("Please unzip Sentinel-2 data into the downloads folder.")
         return
         
     print(f"Found {len(products)} products. Starting import...")
