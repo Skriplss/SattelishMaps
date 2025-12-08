@@ -1,59 +1,31 @@
-# Frontend Architecture
+# Frontend Documentation
 
-Vanilla JavaScript frontend з MapLibre GL для візуалізації супутникових даних.
+The frontend is a lightweight, single-page application built with **Vanilla JavaScript** and **MapLibre GL JS**. It avoids heavy frameworks to ensure maximum performance and simplicity.
 
-## Технології
-
-- **MapLibre GL JS 3.x** - Інтерактивні карти
-- **Vanilla JavaScript (ES6+)** - Без фреймворків
-- **CSS3** - Сучасна стилізація
-
-## Структура
+## 📂 Directory Structure
 
 ```
 frontend/
-├── index.html          # Головна сторінка
 ├── js/
-│   ├── main.js        # Точка входу
-│   ├── map.js         # MapLibre компонент
-│   ├── api.js         # API інтеграція
-│   ├── filters.js     # Фільтри
-│   ├── colormap.js    # Кольорові карти
-│   └── utils.js       # Утиліти
-├── css/
-│   ├── styles.css     # Головні стилі
-│   ├── map.css        # Стилі карти
-│   └── filters.css    # Стилі фільтрів
-└── assets/
-    └── icons/         # Іконки
+│   ├── main.js        # Entry point, initialization
+│   ├── map.js         # Map interaction logic (SatelliteMap class)
+│   ├── layers.js      # Layer management (SatelliteLayers class)
+│   ├── api.js         # Backend API communication
+│   ├── ui.js          # UI controls interaction
+│   └── stats.js       # Statistics panel logic
+├── css/               # Styles (variables, components)
+├── components/        # HTML partials (if any)
+└── index.html         # Main application entry
 ```
 
-## Компоненти
+## 🏗️ Architecture
 
-### Map Component ([map.js](map-component.md))
-- Ініціалізація MapLibre GL
-- Управління шарами
-- Події карти
+The application follows a simple class-based modular structure (simulated without ES6 modules for broad compatibility if needed, or just simplicity).
 
-### API Integration ([api.js](api-integration.md))
-- HTTP запити до backend
-- Обробка відповідей
-- Error handling
+- **`SatelliteMap`**: Wrapper around `maplibregl.Map`. Handles initialization, camera controls, and base style.
+- **`SatelliteLayers`**: Manages the addition/removal of raster (satellite) and vector (stats) layers.
+- **`SatelliteAPI`**: Centralized place for all `fetch` calls to the backend.
 
-### Filters System ([filters.js](filters.md))
-- Фільтри за датою
-- Фільтри за хмарністю
-- Фільтри за індексами
-
-### Color Mapping ([colormap.js](colormap.md))
-- Кольорові схеми для NDVI, NDWI, NDBI
-- Легенда
-
-## Детальна документація
-
-- [Структура](structure.md)
-- [Компонент карти](map-component.md)
-- [API інтеграція](api-integration.md)
-- [Фільтри](filters.md)
-- [Colormap](colormap.md)
-- [Стилізація](styling.md)
+## 🎨 Design System
+- **CSS Variables**: Used for theming (Light/Dark mode).
+- **Responsive**: Flexbox/Grid layouts ensure usability on mobile and desktop.
