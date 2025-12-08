@@ -31,20 +31,7 @@ async def list_satellite_images(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Items per page")
 ):
-    """
-    Get list of satellite images with optional filters
-    
-    - **date_from**: Filter images from this date
-    - **date_to**: Filter images until this date
-    - **cloud_max**: Maximum cloud coverage percentage
-    - **platform**: Satellite platform (e.g., Sentinel-2)
-    - **page**: Page number for pagination
-    - **limit**: Number of items per page
-    """
     try:
-        logger.info(f"Fetching satellite images: page={page}, limit={limit}, cloud_max={cloud_max}")
-        
-        # Get data from Supabase
         data, total = supabase_service.get_satellite_images(
             date_from=date_from,
             date_to=date_to,
@@ -69,14 +56,7 @@ async def list_satellite_images(
 
 @router.get("/satellite-data/{image_id}", response_model=dict)
 async def get_satellite_image(image_id: UUID):
-    """
-    Get detailed information about a specific satellite image
-    
-    - **image_id**: UUID of the satellite image
-    """
     try:
-        logger.info(f"Fetching satellite image: {image_id}")
-        
         data = supabase_service.get_satellite_image_by_id(str(image_id))
         
         if not data:
@@ -113,17 +93,7 @@ async def get_satellite_image(image_id: UUID):
 
 @router.post("/satellite-data", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def create_satellite_image(image: SatelliteImageCreate):
-    """
-    Add a new satellite image to the database
-    
-    - **product_id**: Copernicus product ID
-    - **acquisition_date**: Image acquisition date
-    - **cloud_coverage**: Cloud coverage percentage
-    - **platform**: Satellite platform
-    """
     try:
-        logger.info(f"Creating satellite image: {image.product_id}")
-        
         data = supabase_service.insert_satellite_image(image.model_dump())
         
         return created_response(
@@ -138,14 +108,7 @@ async def create_satellite_image(image: SatelliteImageCreate):
 
 @router.delete("/satellite-data/{image_id}", response_model=dict)
 async def delete_satellite_image(image_id: UUID):
-    """
-    Delete a satellite image from the database
-    
-    - **image_id**: UUID of the satellite image to delete
-    """
     try:
-        logger.info(f"Deleting satellite image: {image_id}")
-        
         success = supabase_service.delete_satellite_image(str(image_id))
         
         if not success:
@@ -174,12 +137,7 @@ async def get_images_in_bounds(
     cloud_max: float = Query(30, ge=0, le=100),
     limit: int = Query(100, ge=1, le=100)
 ):
-    """
-    Get satellite images from DATABASE within a bounding box (No Copernicus Search)
-    """
     try:
-        logger.info(f"Searching DB images: {date_from} to {date_to}")
-        
         data = supabase_service.get_images_in_bounds(
             min_lat=min_lat,
             max_lat=max_lat,

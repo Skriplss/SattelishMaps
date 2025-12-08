@@ -10,24 +10,19 @@ class SatelliteLayers {
     }
 
     /**
-     * Adds a raster layer to the map (e.g., satellite imagery)
-     * @param {string} id - Unique layer ID
-     * @param {string} url - Tile URL template (z/x/y)
-     * @param {object} options - Optional settings (opacity, etc.)
+     * Adds a raster layer to the map
      */
     addRasterLayer(id, url, options = {}) {
         if (!this.map || !this.map.getSource) {
-            console.error('❌ Map instance not ready');
+            console.error('Map instance not ready');
             return;
         }
 
-        // Remove if exists to avoid collision
         this.removeLayer(id);
 
-        console.log(`🌍 Adding raster layer: ${id}`);
+        console.log(`Adding raster layer: ${id}`);
 
         try {
-            // 1. Add Source
             this.map.addSource(id, {
                 type: 'raster',
                 tiles: [url],
@@ -35,9 +30,7 @@ class SatelliteLayers {
                 attribution: 'Sentinel-2 Data'
             });
 
-            // 2. Add Layer
-            // We want the satellite image to be UNDER the gray world mask
-            // so the world stays gray, and only Slovakia (the hole) shows the satellite clearly
+            // Ensure satellite image is below overlay layers
             let beforeLayerId = undefined;
 
             if (this.map.getLayer('world-gray-layer')) {
@@ -45,7 +38,6 @@ class SatelliteLayers {
             } else if (this.map.getLayer('slovakia-border')) {
                 beforeLayerId = 'slovakia-border';
             } else {
-                // Fallback: finding labels
                 const layers = this.map.getStyle().layers;
                 const labelLayer = layers.find(l => l.type === 'symbol' || l.id.includes('label'));
                 if (labelLayer) {
@@ -64,16 +56,15 @@ class SatelliteLayers {
             }, beforeLayerId);
 
             this.activeLayers.add(id);
-            console.log(`✅ Layer ${id} added successfully`);
+            console.log(`Layer ${id} added successfully`);
 
         } catch (error) {
-            console.error(`❌ Error adding layer ${id}:`, error);
+            console.error(`Error adding layer ${id}:`, error);
         }
     }
 
     /**
      * Removes a layer and its source
-     * @param {string} id - Layer ID to remove
      */
     removeLayer(id) {
         if (!this.map) return;
@@ -81,7 +72,7 @@ class SatelliteLayers {
         if (this.map.getLayer(id)) {
             this.map.removeLayer(id);
             this.activeLayers.delete(id);
-            console.log(`🗑️ Layer ${id} removed`);
+            console.log(`Layer ${id} removed`);
         }
 
         if (this.map.getSource(id)) {
@@ -91,8 +82,6 @@ class SatelliteLayers {
 
     /**
      * Updates opacity of an existing layer
-     * @param {string} id - Layer ID
-     * @param {number} opacity - 0.0 to 1.0
      */
     setLayerOpacity(id, opacity) {
         if (this.map && this.map.getLayer(id)) {
@@ -100,63 +89,50 @@ class SatelliteLayers {
         }
     }
 
-    /**
-     * Remove all managed layers
-     */
     clearAll() {
         this.activeLayers.forEach(id => this.removeLayer(id));
     }
 
     /**
-     * Show a specific layer type (ndvi, ndwi, ndbi, moisture) using WMS tiles
-     * @param {string} layerType
+     * Show a specific layer type using WMS tiles
      */
     async showLayer(layerType) {
-        console.log(`👁️ Showing layer: ${layerType}`);
+        console.log(`Showing layer: ${layerType}`);
 
         try {
-            // 1. Get current date from calendar
             const mapDateInput = document.getElementById('map-date');
 
             if (!mapDateInput || !mapDateInput.value) {
-                console.error('❌ No date selected');
+                console.error('No date selected');
                 alert('Пожалуйста, выберите дату');
                 return;
             }
 
             const selectedDate = mapDateInput.value;
-            console.log(`📅 Selected date: ${selectedDate}`);
+            console.log(`Selected date: ${selectedDate}`);
 
-            // 2. Clear old layers
             this.clearAll();
 
-            // 3. Show loader
             const loader = document.getElementById('loader');
             if (loader) loader.classList.remove('hidden');
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = 'wait';
 
-            // 4. Build WMS tile URL
             const API_BASE_URL = window.SatelliteAPI?.API_BASE_URL || 'http://localhost:8000';
             const tileUrl = `${API_BASE_URL}/api/wms/tile/{z}/{x}/{y}.png?date=${selectedDate}&index_type=${layerType.toUpperCase()}`;
 
-            console.log(`🗺️ Loading WMS tiles: ${tileUrl}`);
+            console.log(`Loading WMS tiles: ${tileUrl}`);
 
-            // 5. Add WMS raster layer
             this.addRasterLayer(layerType, tileUrl, { opacity: 0.8 });
-
-            // 6. Show legend
             this.showLegend(layerType);
 
-            // 7. Hide loader
             if (loader) loader.classList.add('hidden');
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = '';
 
-            console.log(`✅ WMS layer ${layerType} loaded successfully`);
+            console.log(`WMS layer ${layerType} loaded successfully`);
 
         } catch (error) {
-            console.error('❌ Failed to show layer:', error);
+            console.error('Failed to show layer:', error);
 
-            // Hide loader
             const loader = document.getElementById('loader');
             if (loader) loader.classList.add('hidden');
             if (window.satelliteMap) window.satelliteMap.map.getCanvas().style.cursor = '';
@@ -167,8 +143,6 @@ class SatelliteLayers {
 
     /**
      * Add vector layer from region statistics GeoJSON
-     * @param {string} id - Layer ID
-     * @param {object} geojson - GeoJSON FeatureCollection
      */
     addVectorLayerFromRegionStats(id, geojson) {
         if (!this.map) return;
@@ -180,57 +154,54 @@ class SatelliteLayers {
                 data: geojson
             });
 
-            // Determine color scale based on index type
             const indexType = geojson.features[0]?.properties?.index_type?.toLowerCase() || id;
 
             let fillColor = [
                 'interpolate',
                 ['linear'],
-                ['get', 'mean'],  // Use 'mean' property from region statistics
+                ['get', 'mean'],
                 -1, '#000000'
             ];
 
-            // Color scales for different indices
             if (indexType === 'ndvi') {
                 fillColor.push(
-                    -0.1, '#8B4513',  // Bare soil/rock
-                    0, '#D2B48C',      // Very sparse vegetation
-                    0.2, '#FEE090',    // Sparse vegetation
-                    0.4, '#91CF60',    // Moderate vegetation
-                    0.6, '#41A636',    // Dense vegetation
-                    0.8, '#006400'     // Very dense vegetation
+                    -0.1, '#8B4513',
+                    0, '#D2B48C',
+                    0.2, '#FEE090',
+                    0.4, '#91CF60',
+                    0.6, '#41A636',
+                    0.8, '#006400'
                 );
             } else if (indexType === 'ndwi') {
                 fillColor.push(
-                    -0.5, '#8B4513',   // Dry soil
-                    -0.2, '#D2B48C',   // Moist soil
-                    0, '#87CEEB',      // Wet soil
-                    0.2, '#4169E1',    // Shallow water
-                    0.5, '#0000CD',    // Deep water
-                    1.0, '#000080'     // Very deep water
+                    -0.5, '#8B4513',
+                    -0.2, '#D2B48C',
+                    0, '#87CEEB',
+                    0.2, '#4169E1',
+                    0.5, '#0000CD',
+                    1.0, '#000080'
                 );
             } else if (indexType === 'ndbi') {
                 fillColor.push(
-                    -0.5, '#0000CD',   // Water
-                    -0.2, '#228B22',   // Vegetation
-                    0, '#D2B48C',      // Bare soil
-                    0.2, '#A0522D',    // Light urban
-                    0.4, '#8B4513',    // Dense urban
-                    0.6, '#800000'     // Very dense urban
+                    -0.5, '#0000CD',
+                    -0.2, '#228B22',
+                    0, '#D2B48C',
+                    0.2, '#A0522D',
+                    0.4, '#8B4513',
+                    0.6, '#800000'
                 );
             } else if (indexType === 'moisture') {
                 fillColor.push(
-                    -0.8, '#8B0000',   // Extreme stress
-                    -0.6, '#CD5C5C',   // High stress
-                    -0.4, '#F08080',   // Moderate stress
-                    -0.2, '#FFFF00',   // Low stress
-                    0, '#90EE90',      // Normal
-                    0.2, '#00FFFF',    // High moisture
-                    0.4, '#00008B'     // Very high moisture
+                    -0.8, '#8B0000',
+                    -0.6, '#CD5C5C',
+                    -0.4, '#F08080',
+                    -0.2, '#FFFF00',
+                    0, '#90EE90',
+                    0.2, '#00FFFF',
+                    0.4, '#00008B'
                 );
             }
 
-            // Add fill layer
             this.map.addLayer({
                 id: id,
                 type: 'fill',
@@ -241,7 +212,6 @@ class SatelliteLayers {
                 }
             });
 
-            // Add outline layer for better visibility
             this.map.addLayer({
                 id: `${id}-outline`,
                 type: 'line',
@@ -256,20 +226,15 @@ class SatelliteLayers {
             this.activeLayers.add(id);
             this.activeLayers.add(`${id}-outline`);
 
-            // Show legend
             this.showLegend(indexType);
 
-            console.log(`✅ Vector layer ${id} added with ${geojson.features.length} features`);
+            console.log(`Vector layer ${id} added with ${geojson.features.length} features`);
 
         } catch (e) {
-            console.error('❌ Vector layer error:', e);
+            console.error('Vector layer error:', e);
         }
     }
 
-    /**
-     * Show legend for the active layer
-     * @param {string} layerType 
-     */
     showLegend(layerType) {
         const legendContainer = document.getElementById('legend-container');
         if (!legendContainer) return;
@@ -281,11 +246,6 @@ class SatelliteLayers {
         }
     }
 
-    /**
-     * Get HTML for legend based on layer type
-     * @param {string} layerType 
-     * @returns {string} HTML string
-     */
     getLegendHTML(layerType) {
         if (layerType === 'ndvi') {
             return `
