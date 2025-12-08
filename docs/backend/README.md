@@ -2,7 +2,7 @@
 
 The backend is built with **FastAPI** to provide a high-performance, asynchronous API for processing satellite imagery and serving geospatial data.
 
-## 📂 Directory Structure
+## Directory Structure
 
 ```
 backend/
@@ -14,7 +14,7 @@ backend/
 └── scheduler.py     # APScheduler setup for background tasks
 ```
 
-## 🔑 Key Components
+## Key Components
 
 ### API Layer (`api/`)
 Handles HTTP requests, validation, and serialization.
@@ -32,7 +32,7 @@ Uses `APScheduler` to run periodic tasks:
 - **Daily Data Fetch**: Checks for new satellite passes every 6 hours (configurable).
 - **Cleanup**: Removes old temporary files.
 
-## 🛠️ Technologies
+## Technologies
 - **FastAPI**: Web framework.
 - **Rasterio**: Reading/writing GeoTIFFs.
 - **Shapely**: Geometric operations (Polygons, validation).
