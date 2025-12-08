@@ -15,10 +15,6 @@ async def main():
     setup_logging()
     logger = logging.getLogger(__name__)
     
-    print("\n" + "="*80)
-    print("🛰️  STARTING MANUAL SATELLITE DATA FETCH")
-    print("="*80 + "\n")
-    
     try:
         # Force Trnava bounds for this run
         from config.settings import settings
@@ -27,13 +23,8 @@ async def main():
         # Run the fetch job (6 months history)
         await satellite_scheduler.fetch_and_process_sentinel_data(days_back=180)
         
-        print("\n" + "="*80)
-        print("✅  MANUAL FETCH COMPLETED")
-        print("="*80 + "\n")
-        
     except Exception as e:
         logger.error(f"Error during manual fetch: {e}")
-        print(f"\n❌ Error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
