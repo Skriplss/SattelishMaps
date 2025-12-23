@@ -2,7 +2,6 @@
 API endpoints for NDVI and NDWI indices operations
 """
 from fastapi import APIRouter, HTTPException, status
-from typing import Optional
 from uuid import UUID
 import logging
 

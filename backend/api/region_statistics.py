@@ -3,7 +3,6 @@ API endpoints for region statistics operations
 """
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
-from datetime import date
 import logging
 
 from utils.response_formatter import success_response

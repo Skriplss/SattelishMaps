@@ -33,7 +33,8 @@ class SatelliteDataScheduler:
         self.successful_runs = 0
         self.failed_runs = 0
     
-    def _parse_bbox(self, wkt_polygon: str) -> List[float]:
+    @staticmethod
+    def _parse_bbox(wkt_polygon: str) -> List[float]:
         """
         Parse WKT Polygon to BBox [min_lon, min_lat, max_lon, max_lat]
         """
@@ -89,7 +90,7 @@ class SatelliteDataScheduler:
             # The schema expects 'satellite_images', 'ndvi_data', 'ndwi_data'.
             # 'satellite_images' usually requires a product_id. 
             # Sentinel Hub Statistical API returns aggregated stats, not single 'products'.
-            # We might need to synthesized a 'product' or image entry for the day/interval.
+            # We might need to synthesize a 'product' or image entry for the day/interval.
             
             self._save_statistics_to_db(stats, bbox)
             
@@ -100,7 +101,8 @@ class SatelliteDataScheduler:
             logger.error(f"❌ Scheduler job failed: {str(e)}", exc_info=True)
             self.failed_runs += 1
             
-    def _save_statistics_to_db(self, stats: dict, bbox: List[float]):
+    @staticmethod
+    def _save_statistics_to_db(stats: dict, bbox: List[float]):
         """
         Save statistical data to Supabase 'region_statistics' table.
         """
@@ -119,7 +121,7 @@ class SatelliteDataScheduler:
                 continue
             
             # Create Polygon WKT for bbox
-            # bbox = [min_lon, min_lat, max_lon, max_lat]
+            #  = [min_lon, min_lat, max_lon, max_lat]
             polygon_wkt = f"POLYGON(({bbox[0]} {bbox[1]}, {bbox[2]} {bbox[1]}, {bbox[2]} {bbox[3]}, {bbox[0]} {bbox[3]}, {bbox[0]} {bbox[1]}))"
 
             # Prepare Data Entry
