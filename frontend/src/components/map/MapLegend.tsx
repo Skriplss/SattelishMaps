@@ -44,7 +44,7 @@ export function MapLegend({ activeLayer }: MapLegendProps) {
     if (!info) return null;
 
     return (
-        <div className="absolute bottom-8 left-20 bg-white dark:bg-slate-800 rounded-lg shadow-xl p-4 z-10 min-w-[200px] border border-slate-200 dark:border-slate-700">
+        <div className="absolute bottom-8 left-24 bg-white dark:bg-slate-800 rounded-lg shadow-xl p-4 z-10 min-w-[200px] border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-2">
                 <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">{info.name}</h4>
                 <button

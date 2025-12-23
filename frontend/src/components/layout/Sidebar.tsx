@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, Globe, Layers, Droplets, CloudRain, Square, Sun, Moon, Info, Languages, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -9,8 +9,20 @@ interface SidebarProps {
 
 export function Sidebar({ onLayerSelect, activeLayer }: SidebarProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const [theme, setTheme] = useState<'light' | 'dark'>('light');
+    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+        const saved = localStorage.getItem('theme');
+        return (saved === 'dark' || saved === 'light') ? saved : 'light';
+    });
     const [showInfo, setShowInfo] = useState(false);
+
+    // Initialize theme on mount
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, []);
 
     const toggleTheme = () => {
         const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -39,7 +51,7 @@ export function Sidebar({ onLayerSelect, activeLayer }: SidebarProps) {
             <aside
                 className={cn(
                     "fixed left-0 top-0 h-screen bg-sidebar border-r border-slate-200 dark:border-slate-800 z-50 transition-all duration-300 flex flex-col p-4 shadow-xl",
-                    isOpen ? "w-64" : "w-16"
+                    isOpen ? "w-72" : "w-20"
                 )}
             >
                 {/* Menu Toggle */}

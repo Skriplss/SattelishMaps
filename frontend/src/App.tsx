@@ -31,7 +31,7 @@ function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 relative flex flex-col bg-slate-200 dark:bg-slate-900 pl-16 w-full">
+      <main className="flex-1 relative flex flex-col bg-slate-200 dark:bg-slate-900 pl-20 w-full">
         <TopBar
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
