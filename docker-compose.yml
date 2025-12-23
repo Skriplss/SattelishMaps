@@ -64,8 +64,7 @@ services:
       - backend
     networks:
       - sattelishmaps-network
-    volumes:
-      - ./frontend:/usr/share/nginx/html
+    restart: unless-stopped
 
 networks:
   sattelishmaps-network:

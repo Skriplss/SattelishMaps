@@ -94,5 +94,5 @@ export function MapContainer({ activeLayer, selectedDate }: MapContainerProps) {
 
     }, [activeLayer, isLoaded, selectedDate]);
 
-    return <div ref={mapContainer} className="w-full h-full relative" />;
+    return <div ref={mapContainer} className="absolute inset-0" />;
 }
