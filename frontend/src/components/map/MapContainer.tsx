@@ -4,15 +4,14 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface MapContainerProps {
     activeLayer: string | null;
+    selectedDate: string;
 }
 
-export function MapContainer({ activeLayer }: MapContainerProps) {
+export function MapContainer({ activeLayer, selectedDate }: MapContainerProps) {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Hardcoded date for MVP verification, will be moved to state later
-    const selectedDate = '2024-12-05';
     const API_BASE_URL = 'http://localhost:8000';
 
     useEffect(() => {
@@ -93,7 +92,7 @@ export function MapContainer({ activeLayer }: MapContainerProps) {
             }
         }
 
-    }, [activeLayer, isLoaded]);
+    }, [activeLayer, isLoaded, selectedDate]);
 
     return <div ref={mapContainer} className="w-full h-full relative" />;
 }
