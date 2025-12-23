@@ -5,6 +5,8 @@ import { Sidebar } from './components/layout/Sidebar';
 import { MapContainer } from './components/map/MapContainer';
 import { StatsPanel } from './components/stats/StatsPanel';
 
+import { MapLegend } from './components/map/MapLegend';
+
 import { TopBar } from './components/layout/TopBar';
 
 function App() {
@@ -29,16 +31,17 @@ function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 relative flex flex-col bg-slate-200 dark:bg-slate-900 pl-16">
+      <main className="flex-1 relative flex flex-col bg-slate-200 dark:bg-slate-900 pl-16 w-full">
         <TopBar
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
         />
-        <div className="flex-1 relative">
+        <div className="flex-1 relative w-full">
           <MapContainer
             activeLayer={activeLayer}
             selectedDate={selectedDate}
           />
+          <MapLegend activeLayer={activeLayer} />
         </div>
       </main>
     </Layout>
