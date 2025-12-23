@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -7,12 +7,13 @@ import {
     LineElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    type Chart
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { X, FileText, Image } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { type Chart } from 'chart.js';
+import { SatelliteAPI } from '@/services/api';
 
 // Register ChartJS components
 ChartJS.register(
@@ -33,16 +34,43 @@ interface StatsPanelProps {
 
 export function StatsPanel({ isOpen, onClose, activeLayer }: StatsPanelProps) {
     const chartRef = useRef<Chart<'line'>>(null);
+    const [chartData, setChartData] = useState<{ labels: string[], data: number[] }>({ labels: [], data: [] });
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Mock Data (Ported from legacy stats.js generateData)
-    const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // Default region for MVP
+    const regionName = "Bratislava";
+
+    useEffect(() => {
+        async function loadData() {
+            if (!isOpen || !activeLayer) return;
+
+            setIsLoading(true);
+            const history = await SatelliteAPI.fetchRegionHistory(regionName, activeLayer);
+
+            if (history && history.length > 0) {
+                // Sort by date just in case
+                const sorted = history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                setChartData({
+                    labels: sorted.map(h => new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
+                    data: sorted.map(h => h.mean)
+                });
+            } else {
+                // Fallback / Clear
+                setChartData({ labels: [], data: [] });
+            }
+            setIsLoading(false);
+        }
+
+        loadData();
+    }, [isOpen, activeLayer]);
 
     const data = {
-        labels,
+        labels: chartData.labels,
         datasets: [
             {
-                label: `${activeLayer?.toUpperCase() || 'NDVI'} Trend`,
-                data: labels.map(() => 0.3 + Math.random() * 0.5),
+                label: `${activeLayer?.toUpperCase() || 'NDVI'} Trend - ${regionName}`,
+                data: chartData.data,
                 borderColor: '#41A636',
                 backgroundColor: 'rgba(65, 166, 54, 0.5)',
                 tension: 0.4,
@@ -106,7 +134,12 @@ export function StatsPanel({ isOpen, onClose, activeLayer }: StatsPanelProps) {
                 </div>
 
                 {/* Chart */}
-                <div className="h-64 bg-slate-50 dark:bg-slate-900 rounded-xl p-2 border border-slate-200 dark:border-slate-700">
+                <div className="h-64 bg-slate-50 dark:bg-slate-900 rounded-xl p-2 border border-slate-200 dark:border-slate-700 relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm z-10">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                        </div>
+                    )}
                     <Line ref={chartRef} options={options} data={data} />
                 </div>
 
