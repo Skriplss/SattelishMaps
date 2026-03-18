@@ -5,8 +5,6 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](https://www.docker.com/)
 
-**SattelishMaps** is an automated system for acquiring and analyzing Sentinel-2 satellite imagery. It calculates environmental indices (NDVI, NDWI, NDBI, Moisture) to monitor environmental changes over time.
-
 ## Key Features
 
 -  **Automated Data Acquisition**: Integration with Sentinel Hub API for fetching up-to-date satellite imagery.
