@@ -5,14 +5,17 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 interface MapContainerProps {
     activeLayer: string | null;
     selectedDate: string;
+    onAreaSelect: (area: { minLat: number; maxLat: number; minLon: number; maxLon: number } | null) => void;
 }
 
-export function MapContainer({ activeLayer, selectedDate }: MapContainerProps) {
+export function MapContainer({ activeLayer, selectedDate, onAreaSelect }: MapContainerProps) {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
+    const [isDrawing, setIsDrawing] = useState(false);
+    const drawStart = useRef<[number, number] | null>(null);
 
-    const API_BASE_URL = 'http://localhost:8000';
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     useEffect(() => {
         if (map.current || !mapContainer.current) return;
@@ -34,9 +37,42 @@ export function MapContainer({ activeLayer, selectedDate }: MapContainerProps) {
         map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
         map.current.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
+        // Add drawing controls for area selection
         map.current.on('load', () => {
             setIsLoaded(true);
-            console.log('Map loaded');
+            
+            // Add source for drawn features
+            if (map.current) {
+                map.current.addSource('drawn-area', {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: []
+                    }
+                });
+
+                // Add fill layer
+                map.current.addLayer({
+                    id: 'drawn-area-fill',
+                    type: 'fill',
+                    source: 'drawn-area',
+                    paint: {
+                        'fill-color': '#3b82f6',
+                        'fill-opacity': 0.2
+                    }
+                });
+
+                // Add outline layer
+                map.current.addLayer({
+                    id: 'drawn-area-outline',
+                    type: 'line',
+                    source: 'drawn-area',
+                    paint: {
+                        'line-color': '#3b82f6',
+                        'line-width': 2
+                    }
+                });
+            }
         });
 
         return () => {
@@ -60,7 +96,6 @@ export function MapContainer({ activeLayer, selectedDate }: MapContainerProps) {
         }
 
         if (activeLayer) {
-            console.log(`Adding layer: ${activeLayer} for date ${selectedDate}`);
             const tileUrl = `${API_BASE_URL}/api/wms/tile/{z}/{x}/{y}.png?date=${selectedDate}&index_type=${activeLayer.toUpperCase()}`;
 
             try {
@@ -92,7 +127,108 @@ export function MapContainer({ activeLayer, selectedDate }: MapContainerProps) {
             }
         }
 
-    }, [activeLayer, isLoaded, selectedDate]);
+    }, [activeLayer, isLoaded, selectedDate, API_BASE_URL]);
 
-    return <div ref={mapContainer} className="w-full h-full" />;
+    // Enable area selection with Shift+Click and drag
+    useEffect(() => {
+        if (!map.current || !isLoaded) return;
+
+        const canvas = map.current.getCanvas();
+
+        const handleMouseDown = (e: MouseEvent) => {
+            // Only start drawing if Shift key is pressed
+            if (!e.shiftKey) return;
+            
+            e.preventDefault();
+            
+            const point = map.current!.unproject([e.clientX, e.clientY]);
+            drawStart.current = [point.lng, point.lat];
+            setIsDrawing(true);
+            
+            // Change cursor
+            canvas.style.cursor = 'crosshair';
+            
+            // Disable map dragging while drawing
+            map.current!.dragPan.disable();
+        };
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isDrawing || !drawStart.current) return;
+
+            const point = map.current!.unproject([e.clientX, e.clientY]);
+            const start = drawStart.current;
+            const end = [point.lng, point.lat];
+
+            // Create rectangle
+            const polygon = {
+                type: 'Feature' as const,
+                geometry: {
+                    type: 'Polygon' as const,
+                    coordinates: [[
+                        [start[0], start[1]],
+                        [end[0], start[1]],
+                        [end[0], end[1]],
+                        [start[0], end[1]],
+                        [start[0], start[1]]
+                    ]]
+                },
+                properties: {}
+            };
+
+            // Update the drawn area source
+            const source = map.current?.getSource('drawn-area') as maplibregl.GeoJSONSource;
+            if (source) {
+                source.setData({
+                    type: 'FeatureCollection',
+                    features: [polygon]
+                });
+            }
+        };
+
+        const handleMouseUp = (e: MouseEvent) => {
+            if (isDrawing && drawStart.current) {
+                const point = map.current!.unproject([e.clientX, e.clientY]);
+                const start = drawStart.current;
+                const end = [point.lng, point.lat];
+                
+                // Calculate bounds
+                const minLon = Math.min(start[0], end[0]);
+                const maxLon = Math.max(start[0], end[0]);
+                const minLat = Math.min(start[1], end[1]);
+                const maxLat = Math.max(start[1], end[1]);
+                
+                // Notify parent component
+                onAreaSelect({ minLat, maxLat, minLon, maxLon });
+                
+                setIsDrawing(false);
+                drawStart.current = null;
+                
+                // Reset cursor
+                canvas.style.cursor = '';
+                
+                // Re-enable map dragging
+                map.current!.dragPan.enable();
+            }
+        };
+
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            canvas.removeEventListener('mousedown', handleMouseDown);
+            canvas.removeEventListener('mousemove', handleMouseMove);
+            canvas.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isLoaded, isDrawing, onAreaSelect]);
+
+    return (
+        <div className="relative w-full h-full">
+            <div ref={mapContainer} className="w-full h-full" />
+            {/* Drawing hint */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 pointer-events-none">
+                Hold <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded border border-slate-300 dark:border-slate-600 font-mono text-xs">Shift</kbd> and drag to select area
+            </div>
+        </div>
+    );
 }

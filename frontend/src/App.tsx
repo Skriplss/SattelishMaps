@@ -13,6 +13,19 @@ function App() {
   const [activeLayer, setActiveLayer] = useState<string | null>(null);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('2024-12-05');
+  const [selectedArea, setSelectedArea] = useState<{
+    minLat: number;
+    maxLat: number;
+    minLon: number;
+    maxLon: number;
+  } | null>(null);
+
+  const handleAreaSelect = (area: { minLat: number; maxLat: number; minLon: number; maxLon: number } | null) => {
+    setSelectedArea(area);
+    if (area) {
+      setIsStatsOpen(true);
+    }
+  };
 
   return (
     <Layout>
@@ -28,6 +41,8 @@ function App() {
         isOpen={isStatsOpen}
         onClose={() => setIsStatsOpen(false)}
         activeLayer={activeLayer}
+        selectedArea={selectedArea}
+        selectedDate={selectedDate}
       />
 
       {/* Main Content Area */}
@@ -40,6 +55,7 @@ function App() {
           <MapContainer
             activeLayer={activeLayer}
             selectedDate={selectedDate}
+            onAreaSelect={handleAreaSelect}
           />
           <MapLegend activeLayer={activeLayer} />
         </div>
