@@ -10,12 +10,10 @@ import logging
 from models.satellite_image import (
     SatelliteImageResponse,
     SatelliteImageDetail,
-    SatelliteImageCreate,
-    CopernicusProduct
+    SatelliteImageCreate
 )
-from utils.validators import SatelliteSearchRequest, SatelliteFilterParams
 from utils.response_formatter import success_response, paginated_response, created_response
-from utils.error_handlers import NotFoundError, SupabaseError, CopernicusAPIError
+from utils.error_handlers import NotFoundError, SupabaseError
 from services.supabase_service import supabase_service
 
 logger = logging.getLogger(__name__)

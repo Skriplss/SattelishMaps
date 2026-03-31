@@ -7,7 +7,6 @@ from uuid import UUID
 from datetime import date
 import logging
 
-from models.statistics import StatisticsResponse, TimeSeriesData, AreaStatistics
 from utils.response_formatter import success_response
 from utils.error_handlers import NotFoundError, SupabaseError
 from services.supabase_service import supabase_service
