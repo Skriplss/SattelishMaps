@@ -16,10 +16,10 @@
 
 ## Technology Stack
 
-- **Backend**: FastAPI, APScheduler, Rasterio, Shapely
-- **Frontend**: Vanilla JavaScript, MapLibre GL JS
+- **Backend**: FastAPI, APScheduler, Shapely, Sentinel Hub API
+- **Frontend**: React, TypeScript, MapLibre GL JS, TailwindCSS
 - **Database**: PostgreSQL with PostGIS (via Supabase)
-- **Infrastructure**: Docker & Docker Compose, Nginx
+- **Infrastructure**: Docker & Docker Compose
 
 ## Quick Start
 
@@ -54,9 +54,7 @@
 ## Documentation
 
 - **[Backend Guide](docs/backend/README.md)**: API architecture, services, and scheduler details.
-- **[Frontend Guide](docs/frontend/README.md)**: Map component structure and layer management.
 - **[Architecture Decisions](docs/architecture/decisions/)**: ADRs recording key technical choices.
-- **[Contributing](CONTRIBUTING.md)**: Guidelines for developers.
 - **[Deployment](docs/deployment/production.md)**: Production setup guide.
 
 ## License
