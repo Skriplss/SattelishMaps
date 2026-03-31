@@ -262,11 +262,14 @@ class SupabaseService:
                 "end": max(dates) if dates else None
             }
             
+            # Calculate vegetation health from NDVI if available
+            vegetation_health = self._calculate_vegetation_health(data)
+            
             summary = {
                 "total_images": total,
                 "average_cloud_coverage": round(avg_cloud, 2),
                 "date_range": date_range,
-                "vegetation_health": "moderate"  # TODO: Calculate from NDVI
+                "vegetation_health": vegetation_health
             }
             
             logger.info(f"Generated area summary: {total} images")
@@ -275,6 +278,37 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Error generating area summary: {str(e)}")
             raise
+    
+    def _calculate_vegetation_health(self, images: List[Dict]) -> str:
+        """
+        Calculate overall vegetation health based on NDVI data
+        """
+        try:
+            # Get NDVI data for images
+            ndvi_values = []
+            for img in images:
+                ndvi_data = self.get_ndvi_data(img.get('id'))
+                if ndvi_data and ndvi_data.get('ndvi_mean'):
+                    ndvi_values.append(ndvi_data['ndvi_mean'])
+            
+            if not ndvi_values:
+                return "unknown"
+            
+            avg_ndvi = sum(ndvi_values) / len(ndvi_values)
+            
+            # Classify vegetation health based on NDVI
+            if avg_ndvi < 0.2:
+                return "poor"
+            elif avg_ndvi < 0.4:
+                return "moderate"
+            elif avg_ndvi < 0.6:
+                return "good"
+            else:
+                return "excellent"
+                
+        except Exception as e:
+            logger.error(f"Error calculating vegetation health: {str(e)}")
+            return "unknown"
     
     def insert_region_statistics(self, data: Dict[str, Any]) -> Dict:
         """Insert region statistics (NDVI/NDWI)"""
@@ -528,3 +562,11 @@ class SupabaseService:
 
 # Singleton instance
 supabase_service = SupabaseService()
+
+    def get_region_by_coordinates(self, lat: float, lon: float) -> Optional[str]:
+        """
+        Get region name by coordinates (for future multi-region support)
+        """
+        # Placeholder for future implementation
+        # Could use PostGIS ST_Contains to find which region polygon contains the point
+        return "Default Region"

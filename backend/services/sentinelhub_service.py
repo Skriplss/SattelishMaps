@@ -2,7 +2,6 @@ import os
 import logging
 from datetime import datetime, date
 from typing import List, Dict, Any, Tuple, Optional
-import statistics
 
 from sentinelhub import (
     SHConfig,
@@ -246,6 +245,68 @@ class SentinelHubService:
                 })
             
         return processed_results
+    
+    def search_catalog(
+        self,
+        bbox: List[float],
+        date_from: str,
+        date_to: str,
+        cloud_max: float = 100,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Search Sentinel Hub Catalog for available images
+        
+        Args:
+            bbox: [min_lon, min_lat, max_lon, max_lat]
+            date_from: Start date in YYYY-MM-DD format
+            date_to: End date in YYYY-MM-DD format
+            cloud_max: Maximum cloud coverage percentage
+            limit: Maximum number of results
+            
+        Returns:
+            List of catalog entries with metadata
+        """
+        if not self._config:
+            raise Exception("SentinelHub credentials not configured")
+        
+        try:
+            from sentinelhub import SentinelHubCatalog
+            
+            catalog = SentinelHubCatalog(config=self._config)
+            
+            bbox_obj = BBox(bbox=bbox, crs=CRS.WGS84)
+            
+            time_interval = (date_from, date_to)
+            
+            search_iterator = catalog.search(
+                DataCollection.SENTINEL2_L2A,
+                bbox=bbox_obj,
+                time=time_interval,
+                filter=f"eo:cloud_cover < {cloud_max}",
+                fields={
+                    "include": ["id", "properties.datetime", "properties.eo:cloud_cover"],
+                    "exclude": []
+                }
+            )
+            
+            results = []
+            for item in search_iterator:
+                if len(results) >= limit:
+                    break
+                    
+                results.append({
+                    "id": item.get("id"),
+                    "date": item.get("properties", {}).get("datetime"),
+                    "cloud_coverage": item.get("properties", {}).get("eo:cloud_cover", 0)
+                })
+            
+            logger.info(f"Found {len(results)} catalog entries")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error searching catalog: {str(e)}")
+            raise
 
 # Singleton
 sentinelhub_service = SentinelHubService()
