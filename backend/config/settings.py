@@ -32,16 +32,13 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: str
     SUPABASE_SERVICE_KEY: str
     
-    # Copernicus
+    # Copernicus (Optional - for direct Copernicus API access)
     COPERNICUS_USERNAME: str = ""
     COPERNICUS_PASSWORD: str = ""
     
-    # Sentinel Hub
+    # Sentinel Hub (Required)
     SH_CLIENT_ID: str = ""
     SH_CLIENT_SECRET: str = ""
-
-    # MapTiler
-    MAPTILER_API_KEY: str = ""
     
     # Cache
     CACHE_TTL: int = 3600  # 1 hour
