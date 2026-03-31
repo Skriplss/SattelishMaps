@@ -34,6 +34,16 @@ class SatelliteDataScheduler:
         self.failed_runs = 0
     
     @staticmethod
+    def _get_region_name_from_bbox(bbox: List[float]) -> str:
+        """
+        Determine region name based on bbox coordinates
+        Can be extended to support multiple regions
+        """
+        # For now, return a default region name
+        # In future, this could query a regions database or use reverse geocoding
+        return "Default Region"
+    
+    @staticmethod
     def _parse_bbox(wkt_polygon: str) -> List[float]:
         """
         Parse WKT Polygon to BBox [min_lon, min_lat, max_lon, max_lat]
@@ -125,8 +135,10 @@ class SatelliteDataScheduler:
             polygon_wkt = f"POLYGON(({bbox[0]} {bbox[1]}, {bbox[2]} {bbox[1]}, {bbox[2]} {bbox[3]}, {bbox[0]} {bbox[3]}, {bbox[0]} {bbox[1]}))"
 
             # Prepare Data Entry
+            # Extract region name from bbox or use default
+            region_name = self._get_region_name_from_bbox(bbox)
             entry = {
-                "region_name": "Trnava", # TODO: Make dynamic if multiple regions
+                "region_name": region_name,
                 "date": date_str,
                 "bbox": polygon_wkt,
                 
