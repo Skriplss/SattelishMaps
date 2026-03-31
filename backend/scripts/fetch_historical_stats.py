@@ -67,10 +67,6 @@ async def fetch_and_save_stats(region_name: str, bbox: List[float]):
         ndwi_data = stats.get("ndwi", [])
         logger.info(f"Found {len(ndwi_data)} NDWI records for {region_name}")
         
-        for record in ndvi_data: # TYPO DETECTED in previous thought process? No, using ndvi_data variable name by mistake? 
-            # Using correct variable here:
-            pass 
-
         for record in ndwi_data:
             supabase_service.insert_region_statistics({
                 "region_name": region_name,

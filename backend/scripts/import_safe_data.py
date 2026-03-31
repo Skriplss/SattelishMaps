@@ -1,3 +1,10 @@
+"""
+DEPRECATED: This script is outdated and uses non-existent services (ndvi_calculator, ndwi_calculator).
+The project now uses Sentinel Hub Statistical API for fetching pre-calculated indices.
+Use fetch_now.py or fetch_historical_stats.py instead.
+
+Legacy script for importing .SAFE format Sentinel-2 products from local storage.
+"""
 
 import os
 import sys
