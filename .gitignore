@@ -35,7 +35,7 @@ package-lock.json
 .venv/
 venv/
 ENV/
-env/
+.env/
 
 # Logs
 logs/
@@ -43,8 +43,10 @@ logs/
 
 # Environment variables
 .env
-!frontend/.env
 .env.local
+.env.*.local
+!.env.example
+!frontend/.env.example
 
 # Database
 *.db

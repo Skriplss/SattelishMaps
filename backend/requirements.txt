@@ -1,10 +1,1 @@
-fastapi
-uvicorn
-python-dotenv
-requests
-sentinelhub
-supabase
-sentinelsat
-pydantic
-apscheduler
-shapely
+-r ../requirements.txt
