@@ -5,12 +5,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
-import logging
 
 from config.settings import settings
 from utils.logger import setup_logging
 from utils.error_handlers import register_exception_handlers
-from api import satellite, statistics, indices, region_statistics, wms, sentinelhub, tiles
+from api import statistics, region_statistics, wms, sentinelhub, tiles
 
 from scheduler import satellite_scheduler
 
@@ -71,18 +70,25 @@ app.include_router(region_statistics.router, prefix="/api", tags=["Region Statis
 app.include_router(wms.router, prefix="/api", tags=["WMS/Tiles"])
 app.include_router(tiles.router, prefix="/api", tags=["Tile Cache"])
 app.include_router(sentinelhub.router, prefix="/api/sentinelhub", tags=["SentinelHub Catalog"])
-app.include_router(satellite.router, prefix="/api", tags=["Satellite Data"])
 app.include_router(statistics.router, prefix="/api", tags=["Statistics"])
-app.include_router(indices.router, prefix="/api", tags=["Indices"])
 
 
 
 # Health check endpoint
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Check API health status"""
+    """Check API health status, including database connectivity"""
+    db_ok = True
+    try:
+        from services.supabase_service import supabase_service
+        supabase_service.client.table('region_statistics').select('id').limit(1).execute()
+    except Exception as e:
+        logger.warning(f"Health check: database unreachable: {e}")
+        db_ok = False
+
     return {
-        "status": "ok",
+        "status": "ok" if db_ok else "degraded",
+        "database": "ok" if db_ok else "unreachable",
         "message": "SattelishMaps Backend is running",
         "version": "1.0.0",
         "environment": settings.ENVIRONMENT
