@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Menu, Globe, Layers, Droplets, CloudRain, Square, Sun, Moon, Info, Languages, ChevronRight } from 'lucide-react';
+import { Menu, Layers, Droplets, CloudRain, Square, SquareDashed, Sun, Moon, Info, Languages, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface SidebarProps {
     onLayerSelect: (layer: string | null) => void;
     activeLayer: string | null;
+    isOpen: boolean;
+    onToggleOpen: () => void;
+    drawMode: boolean;
+    onToggleDrawMode: () => void;
+    hasSelection: boolean;
+    onClearSelection: () => void;
 }
 
-export function Sidebar({ onLayerSelect, activeLayer }: SidebarProps) {
-    const [isOpen, setIsOpen] = useState(false);
+export function Sidebar({ onLayerSelect, activeLayer, isOpen, onToggleOpen, drawMode, onToggleDrawMode, hasSelection, onClearSelection }: SidebarProps) {
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         const saved = localStorage.getItem('theme');
         return (saved === 'dark' || saved === 'light') ? saved : 'light';
@@ -58,7 +63,7 @@ export function Sidebar({ onLayerSelect, activeLayer }: SidebarProps) {
             >
                 {/* Menu Toggle */}
                 <button
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={onToggleOpen}
                     className="flex items-center gap-3 p-3 w-full rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors mb-6 text-slate-700 dark:text-slate-200"
                 >
                     <Menu className="w-6 h-6 min-w-[24px]" />
@@ -94,17 +99,38 @@ export function Sidebar({ onLayerSelect, activeLayer }: SidebarProps) {
                     {/* Separator */}
                     <hr className="my-4 border-slate-200 dark:border-slate-700" />
 
-                    {/* Placeholder for Area Selection (Only if layer active) */}
+                    {/* Area selection tools (only when a layer is active) */}
                     {activeLayer && (
-                        <button
-                            className="flex items-center gap-3 p-3 w-full rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 mb-2"
-                            title={t('selectArea')}
-                        >
-                            <Globe className="w-6 h-6 min-w-[24px] text-purple-500" />
-                            <span className={cn("font-medium overflow-hidden whitespace-nowrap transition-all", !isOpen && "w-0 opacity-0")}>
-                                {t('selectArea')}
-                            </span>
-                        </button>
+                        <>
+                            <button
+                                onClick={onToggleDrawMode}
+                                className={cn(
+                                    "flex items-center gap-3 p-3 w-full rounded-xl transition-all border border-transparent mb-2",
+                                    drawMode
+                                        ? "bg-purple-50 dark:bg-slate-800 border-purple-200 dark:border-slate-700 text-purple-600 dark:text-purple-400"
+                                        : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                )}
+                                title={t('selectArea')}
+                            >
+                                <SquareDashed className="w-6 h-6 min-w-[24px] text-purple-500" />
+                                <span className={cn("font-medium overflow-hidden whitespace-nowrap transition-all", !isOpen && "w-0 opacity-0")}>
+                                    {t('selectArea')}
+                                </span>
+                            </button>
+
+                            {hasSelection && (
+                                <button
+                                    onClick={onClearSelection}
+                                    className="flex items-center gap-3 p-3 w-full rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 mb-2"
+                                    title={t('clearSelection')}
+                                >
+                                    <X className="w-6 h-6 min-w-[24px] text-red-400" />
+                                    <span className={cn("font-medium overflow-hidden whitespace-nowrap transition-all", !isOpen && "w-0 opacity-0")}>
+                                        {t('clearSelection')}
+                                    </span>
+                                </button>
+                            )}
+                        </>
                     )}
                 </div>
 
