@@ -1,75 +1,65 @@
+# Development mode with hot-reload:
+#   docker compose -f docker-compose.dev.yml up
+#
+# Backend:  uvicorn --reload picks up edits in ./backend instantly.
+# Frontend: Vite dev server with HMR — the browser updates on save, no rebuild.
 services:
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: sattelishmaps-backend
+    container_name: sattelishmaps-backend-dev
     ports:
       - "8000:8000"
     environment:
-      # Environment
-      - ENVIRONMENT=${ENVIRONMENT:-production}
-      - DEBUG=${DEBUG:-false}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
 
-      # Server
       - HOST=0.0.0.0
       - PORT=8000
 
-      # Supabase
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
 
-      # Copernicus
-      - COPERNICUS_USERNAME=${COPERNICUS_USERNAME}
-      - COPERNICUS_PASSWORD=${COPERNICUS_PASSWORD}
-
-      # Sentinel Hub
       - SH_CLIENT_ID=${SH_CLIENT_ID}
       - SH_CLIENT_SECRET=${SH_CLIENT_SECRET}
 
-      # Scheduler
-      - SCHEDULER_ENABLED=${SCHEDULER_ENABLED:-true}
+      - SCHEDULER_ENABLED=${SCHEDULER_ENABLED:-false}
       - SCHEDULER_INTERVAL_HOURS=${SCHEDULER_INTERVAL_HOURS:-6}
       - DEFAULT_SEARCH_BOUNDS=${DEFAULT_SEARCH_BOUNDS:-POLYGON((12 48, 16 48, 16 52, 12 52, 12 48))}
       - DEFAULT_REGION_NAME=${DEFAULT_REGION_NAME:-Trnava}
       - DEFAULT_CLOUD_MAX=${DEFAULT_CLOUD_MAX:-30.0}
       - PROCESS_HISTORICAL_DATA=${PROCESS_HISTORICAL_DATA:-false}
-
-      # Coverage & Tiles
       - COVERAGE_BBOX=${COVERAGE_BBOX:-16.8,47.7,22.6,49.7}
       - PREFER_PIXEL_TILES=${PREFER_PIXEL_TILES:-false}
-
     volumes:
       - ./logs:/app/logs
       - ./downloads:/app/downloads
       - ./backend:/app
-
-    restart: unless-stopped
-
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - sattelishmaps-network
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: sattelishmaps-frontend
+    image: node:20-alpine
+    container_name: sattelishmaps-frontend-dev
+    working_dir: /app
     ports:
-      - "3000:80"
+      - "3000:5173"
+    volumes:
+      - ./frontend:/app
+      # node_modules live in an anonymous volume: host binaries (glibc) are
+      # incompatible with alpine (musl), so the container installs its own
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     depends_on:
       - backend
     networks:
       - sattelishmaps-network
-    restart: unless-stopped
 
 networks:
   sattelishmaps-network:
