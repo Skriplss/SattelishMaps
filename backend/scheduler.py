@@ -39,9 +39,9 @@ class SatelliteDataScheduler:
         Determine region name based on bbox coordinates
         Can be extended to support multiple regions
         """
-        # For now, return a default region name
-        # In future, this could query a regions database or use reverse geocoding
-        return "Default Region"
+        # For now the scheduler serves a single configured region.
+        # Could later query a regions table or use reverse geocoding.
+        return settings.DEFAULT_REGION_NAME
     
     @staticmethod
     def _parse_bbox(wkt_polygon: str) -> List[float]:
@@ -95,13 +95,6 @@ class SatelliteDataScheduler:
 
             logger.info(f"Found {len(stats['ndvi'])} NDVI records and {len(stats['ndwi'])} NDWI records.")
 
-            # Save to Supabase
-            # Note: We need to adapt the data to the schema.
-            # The schema expects 'satellite_images', 'ndvi_data', 'ndwi_data'.
-            # 'satellite_images' usually requires a product_id. 
-            # Sentinel Hub Statistical API returns aggregated stats, not single 'products'.
-            # We might need to synthesize a 'product' or image entry for the day/interval.
-            
             self._save_statistics_to_db(stats, bbox)
             
             self.successful_runs += 1
@@ -111,67 +104,61 @@ class SatelliteDataScheduler:
             logger.error(f"❌ Scheduler job failed: {str(e)}", exc_info=True)
             self.failed_runs += 1
             
-    @staticmethod
-    def _save_statistics_to_db(stats: dict, bbox: List[float]):
+    def _save_statistics_to_db(self, stats: dict, bbox: List[float]):
         """
-        Save statistical data to Supabase 'region_statistics' table.
+        Save statistical data to Supabase 'region_statistics' table
+        (long format: one row per region + date + index_type).
         """
-        # Group by date
-        dates = set()
-        for item in stats.get('ndvi', []):
-            dates.add(item['date'].split('T')[0])
-            
-        count = 0
-        for date_str in dates:
-            # Find stats for this date
-            ndvi_stat = next((s for s in stats['ndvi'] if s['date'].startswith(date_str)), {})
-            ndwi_stat = next((s for s in stats['ndwi'] if s['date'].startswith(date_str)), {})
-            
-            if not ndvi_stat and not ndwi_stat:
-                continue
-            
-            # Create Polygon WKT for bbox
-            #  = [min_lon, min_lat, max_lon, max_lat]
-            polygon_wkt = f"POLYGON(({bbox[0]} {bbox[1]}, {bbox[2]} {bbox[1]}, {bbox[2]} {bbox[3]}, {bbox[0]} {bbox[3]}, {bbox[0]} {bbox[1]}))"
+        # bbox = [min_lon, min_lat, max_lon, max_lat]
+        polygon_ewkt = (
+            f"SRID=4326;POLYGON(({bbox[0]} {bbox[1]}, {bbox[2]} {bbox[1]}, "
+            f"{bbox[2]} {bbox[3]}, {bbox[0]} {bbox[3]}, {bbox[0]} {bbox[1]}))"
+        )
+        region_name = self._get_region_name_from_bbox(bbox)
 
-            # Prepare Data Entry
-            # Extract region name from bbox or use default
-            region_name = self._get_region_name_from_bbox(bbox)
-            entry = {
-                "region_name": region_name,
-                "date": date_str,
-                "bbox": polygon_wkt,
-                
-                # NDVI
-                "ndvi_mean": ndvi_stat.get('mean'),
-                "ndvi_min": ndvi_stat.get('min'),
-                "ndvi_max": ndvi_stat.get('max'),
-                "ndvi_std": ndvi_stat.get('stDev'),
-                "ndvi_sample_count": ndvi_stat.get('sample_count'),
-                
-                # NDWI
-                "ndwi_mean": ndwi_stat.get('mean'),
-                "ndwi_min": ndwi_stat.get('min'),
-                "ndwi_max": ndwi_stat.get('max'),
-                "ndwi_std": ndwi_stat.get('stDev'),
-                "ndwi_sample_count": ndwi_stat.get('sample_count'),
-                
-                "provider": "Sentinel Hub Statistical API"
-            }
-            
-            # Insert
-            # We use upsert if possible, or just insert. 
-            # Sentinel Hub might return multiple entries for same day if orbits overlap? 
-            # Usually one per day for aggregated.
-            try:
-                # Upsert based on region_name + date to avoid duplicates
-                supabase_service.client.table('region_statistics').upsert(entry, on_conflict='region_name, date').execute()
-                count += 1
-                logger.info(f"Saved stats for {date_str}")
-            except Exception as e:
-                logger.error(f"Failed to save stats for {date_str}: {e}")
-                
-        logger.info(f"Total days saved: {count}")
+        rows = []
+        for index_type in ('NDVI', 'NDWI'):
+            for stat in stats.get(index_type.lower(), []):
+                rows.append({
+                    "region_name": region_name,
+                    "date": stat['date'].split('T')[0],
+                    "index_type": index_type,
+                    "bbox": polygon_ewkt,
+                    "mean": stat.get('mean'),
+                    "min": stat.get('min'),
+                    "max": stat.get('max'),
+                    "std": stat.get('stDev'),
+                    "sample_count": stat.get('sample_count'),
+                    "provider": "Sentinel Hub Statistical API"
+                })
+
+        try:
+            count = supabase_service.upsert_region_statistics(rows)
+            logger.info(f"Total rows saved: {count}")
+        except Exception as e:
+            logger.error(f"Failed to save statistics: {e}")
+
+    async def cleanup_tile_cache(self, keep_days: int = 30):
+        """Evict tiles that have not been accessed for keep_days"""
+        try:
+            response = supabase_service.client.rpc(
+                'cleanup_tile_cache', {'p_keep_days': keep_days}
+            ).execute()
+            logger.info(f"Tile cache cleanup: removed {response.data} stale tiles")
+        except Exception as e:
+            logger.error(f"Tile cache cleanup failed: {e}")
+
+    def get_status(self) -> dict:
+        """Get scheduler status and statistics"""
+        return {
+            "enabled": settings.SCHEDULER_ENABLED,
+            "running": self.is_running,
+            "interval_hours": settings.SCHEDULER_INTERVAL_HOURS,
+            "last_run": self.last_run.isoformat() if self.last_run else None,
+            "total_runs": self.total_runs,
+            "successful_runs": self.successful_runs,
+            "failed_runs": self.failed_runs
+        }
 
     def start(self):
         """Start the scheduler"""
@@ -197,6 +184,15 @@ class SatelliteDataScheduler:
                 name='Fetch and Process Sentinel-2 Data',
                 replace_existing=True,
                 max_instances=1  # Prevent concurrent runs
+            )
+
+            self.scheduler.add_job(
+                self.cleanup_tile_cache,
+                trigger=IntervalTrigger(hours=24),
+                id='cleanup_tile_cache',
+                name='Evict stale tiles from cache',
+                replace_existing=True,
+                max_instances=1
             )
             
             self.scheduler.start()
