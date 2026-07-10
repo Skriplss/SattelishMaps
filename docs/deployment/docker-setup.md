@@ -37,18 +37,34 @@ The API will be available at `http://localhost:8000`.
 
 ### Database Setup
 Ensure your Supabase project has the required schema. Run the SQL script located at:
-`database/schemas/sentinel2_schema.sql`
-in your Supabase SQL Editor.
+`database/schemas/init.sql`
+in your Supabase SQL Editor (see `database/README.md` for details).
 
-## Manual Data Import
-If API access is restricted, you can manually import Sentinel-2 data:
+## Development Mode (Hot Reload)
 
-1.  Download `.SAFE` archives from [Copernicus Browser](https://browser.dataspace.copernicus.eu/).
-2.  Place the unpacked `.SAFE` folders into `downloads/`.
-3.  Run the import script:
-    ```bash
-    docker-compose exec backend python scripts/import_safe_data.py
-    ```
+For local development use the dev compose file — code changes are picked up without rebuilds:
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+- **Backend** (`http://localhost:8000`): uvicorn runs with `--reload`, restarting on every edit in `backend/`.
+- **Frontend** (`http://localhost:3000`): Vite dev server with HMR — the browser updates on save.
+- The scheduler is disabled by default in dev (`SCHEDULER_ENABLED=false`) to avoid burning Sentinel Hub quota; override in `.env` if needed.
+
+## Manual Data Loading
+Data is normally fetched automatically by the scheduler. To load data manually:
+
+```bash
+# Fetch recent statistics immediately
+docker-compose exec backend python scripts/fetch_now.py
+
+# Bulk-load 12 months of historical statistics
+docker-compose exec backend python scripts/fetch_historical_stats.py
+
+# Load raw pixel data for an area
+docker-compose exec backend python -m scripts.fetch_pixel_data --bbox "19.5,48.5,19.7,48.7" --date "2024-12-05"
+```
 
 ## Logs
 To view application logs:

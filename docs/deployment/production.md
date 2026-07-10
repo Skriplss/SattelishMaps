@@ -25,9 +25,15 @@ nano .env
 ```
 Ensure you set:
 - `ENVIRONMENT=production`
-- `DEBUG=false`
+- `DEBUG=false` (disables `/docs`)
 - `SUPABASE_*` keys
 - `SH_CLIENT_*` keys
+- `CORS_ORIGINS` — your public frontend origin
+
+## 2.1 Database
+
+Create the schema on your Supabase project by running
+`database/schemas/init.sql` in the SQL Editor (see [database/README.md](../../database/README.md)).
 
 ## 3. Deployment
 

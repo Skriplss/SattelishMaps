@@ -1,44 +1,60 @@
-# Backend Scheduler
+# Background Scheduler
 
-The scheduler is responsible for keeping the local dataset in sync with Sentinel Hub. It runs as a background process within the FastAPI application.
+`backend/scheduler.py` — an `AsyncIOScheduler` (APScheduler) started from the
+FastAPI lifespan hook. Singleton: `satellite_scheduler`.
 
 ## Configuration
 
-It is configured via environment variables:
-- `SCHEDULER_ENABLED`: Set to `false` to disable (e.g., for API-only instances).
-- `SCHEDULER_INTERVAL_HOURS`: How often to check for new data (Default: 6 hours).
+| Env var | Default | Meaning |
+|---|---|---|
+| `SCHEDULER_ENABLED` | `true` | Master switch (dev compose defaults it to `false`) |
+| `SCHEDULER_INTERVAL_HOURS` | `4` | Statistics fetch cadence |
+| `DEFAULT_SEARCH_BOUNDS` | Trnava polygon (WKT) | AOI for the stats job |
+| `DEFAULT_REGION_NAME` | `Trnava` | `region_name` written to the DB |
+| `PROCESS_HISTORICAL_DATA` | `false` | Run the fetch immediately on startup |
 
-## Tasks
+## Jobs
 
-### 1. `fetch_new_data`
-- **Frequency**: Every `SCHEDULER_INTERVAL_HOURS`.
-- **Action**: Queries Sentinel Hub for available scenes in the defined bounding box since the last fetch.
-- **Logic**:
-    1. Check `last_run` timestamp in database.
-    2. Query Sentinel Hub Catalog API.
-    3. If new scene exists (cloud cover < threshold), download bands.
-    4. Calculate indices (NDVI, etc.).
-    5. Save to `tile_cache/` and update Database metadata.
+| Job id | Trigger | What it does |
+|---|---|---|
+| `fetch_sentinel_data` | every `SCHEDULER_INTERVAL_HOURS` | Pulls NDVI/NDWI aggregates from the Sentinel Hub **Statistical API** for the configured AOI and upserts long-format rows into `region_statistics` |
+| `cleanup_tile_cache` | every 24 h | RPC `cleanup_tile_cache(30)` — deletes tiles not accessed for 30 days |
 
-### 2. `cleanup_cache`
-- **Frequency**: Daily (Midnight).
-- **Action**: Deletes temporary files older than 7 days to save disk space.
+```mermaid
+flowchart LR
+    T["IntervalTrigger<br/>every N hours"] --> F["fetch_and_process_sentinel_data"]
+    F --> P["parse AOI polygon<br/>(shapely, WKT → bbox)"]
+    P --> S["Statistical API<br/>NDVI + NDWI, P1D aggregation"]
+    S --> R["rows: one per<br/>date × index_type"]
+    R --> U["upsert region_statistics<br/>ON CONFLICT (region, date, index)"]
+
+    T2["IntervalTrigger<br/>every 24 h"] --> C["cleanup_tile_cache RPC"]
+```
+
+Both jobs run with `max_instances=1` — a slow run never overlaps the next one.
 
 ## Monitoring
 
-Check scheduler status via the API:
 ```http
 GET /api/scheduler/status
 ```
-Returns:
+
 ```json
 {
+  "enabled": true,
   "running": true,
-  "jobs": [
-    {
-       "id": "fetch_new_data",
-       "next_run_time": "2024-12-08T18:00:00"
-    }
-  ]
+  "interval_hours": 4,
+  "last_run": "2026-07-11T02:00:00",
+  "total_runs": 12,
+  "successful_runs": 12,
+  "failed_runs": 0
 }
+```
+
+## Manual runs
+
+```bash
+cd backend
+python scripts/fetch_now.py                # last 180 days for the configured AOI
+python scripts/fetch_historical_stats.py   # 12 months for 5 Slovak regions
 ```
