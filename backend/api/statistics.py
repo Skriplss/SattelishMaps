@@ -2,48 +2,33 @@
 API endpoints for statistics operations
 """
 from fastapi import APIRouter, Query, Path
-from typing import List, Optional
-from uuid import UUID
+from typing import Optional
 from datetime import date
 import logging
 
 from utils.response_formatter import success_response
-from utils.error_handlers import NotFoundError, SupabaseError
+from utils.error_handlers import SupabaseError
 from services.supabase_service import supabase_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/statistics/{image_id}", response_model=dict)
-async def get_image_statistics(
-    image_id: UUID = Path(..., description="Satellite image UUID")
-):
-    """
-    Get statistics for a specific satellite image
-    
-    - **image_id**: UUID of the satellite image
-    
-    Returns NDVI statistics, vegetation indices, and change detection data
-    """
+@router.get("/statistics/regions", response_model=dict)
+async def get_regions():
+    """Get the list of regions that have statistics in the database"""
     try:
-        logger.info(f"Fetching statistics for image: {image_id}")
-        
-        stats = supabase_service.get_statistics(str(image_id))
-        
-        if not stats:
-            raise NotFoundError(f"Statistics for image {image_id} not found")
-        
+        regions = supabase_service.get_region_names()
+
         return success_response(
-            data=stats,
-            message="Statistics retrieved successfully"
+            data={"regions": regions},
+            message=f"Found {len(regions)} regions",
+            meta={"count": len(regions)}
         )
-        
-    except NotFoundError:
-        raise
+
     except Exception as e:
-        logger.error(f"Error fetching statistics for {image_id}: {str(e)}")
-        raise SupabaseError(f"Failed to fetch statistics: {str(e)}")
+        logger.error(f"Error fetching regions: {str(e)}")
+        raise SupabaseError(f"Failed to fetch regions: {str(e)}")
 
 
 @router.get("/statistics/timeseries/{area_name}", response_model=dict)
@@ -89,42 +74,3 @@ async def get_timeseries_data(
     except Exception as e:
         logger.error(f"Error fetching time series for {area_name}: {str(e)}")
         raise SupabaseError(f"Failed to fetch time series data: {str(e)}")
-
-
-@router.get("/statistics/area/summary", response_model=dict)
-async def get_area_summary(
-    min_lat: float = Query(..., ge=-90, le=90),
-    max_lat: float = Query(..., ge=-90, le=90),
-    min_lon: float = Query(..., ge=-180, le=180),
-    max_lon: float = Query(..., ge=-180, le=180),
-    date_from: Optional[date] = Query(None),
-    date_to: Optional[date] = Query(None)
-):
-    """
-    Get summary statistics for a geographic area
-    
-    - **min_lat, max_lat, min_lon, max_lon**: Bounding box coordinates
-    - **date_from, date_to**: Optional date range filter
-    
-    Returns aggregated statistics including average NDVI, cloud coverage, and vegetation health
-    """
-    try:
-        logger.info(f"Fetching area summary for bounds: ({min_lat},{min_lon}) to ({max_lat},{max_lon})")
-        
-        summary = supabase_service.get_area_summary(
-            min_lat=min_lat,
-            max_lat=max_lat,
-            min_lon=min_lon,
-            max_lon=max_lon,
-            date_from=date_from,
-            date_to=date_to
-        )
-        
-        return success_response(
-            data=summary,
-            message="Area summary retrieved successfully"
-        )
-        
-    except Exception as e:
-        logger.error(f"Error fetching area summary: {str(e)}")
-        raise SupabaseError(f"Failed to fetch area summary: {str(e)}")
