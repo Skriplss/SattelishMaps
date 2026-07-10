@@ -3,10 +3,18 @@ API endpoints for WMS/Process API tiles
 """
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response
-from typing import List
 import logging
 
+from config.settings import settings
 from services.sentinel_hub_wms_service import sentinel_hub_wms_service
+from services.tile_cache_service import tile_cache_service
+from services.pixel_tile_renderer import empty_tile_png
+from utils.validation import (
+    validate_index_type,
+    validate_date,
+    validate_bbox_in_coverage,
+    bbox_intersects_coverage
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -31,22 +39,17 @@ async def get_wms_image(
     - **width**: Image width in pixels (256-2048)
     - **height**: Image height in pixels (256-2048)
     """
+    index_type_upper = validate_index_type(index_type)
+    validate_date(date)
+
     try:
         # Parse bbox
         bbox_coords = [float(x) for x in bbox.split(',')]
         if len(bbox_coords) != 4:
             raise ValueError("bbox must have 4 coordinates")
-        
-        # Validate index type
-        valid_indices = ["NDVI", "NDWI", "NDBI", "MOISTURE"]
-        index_type_upper = index_type.upper()
-        
-        if index_type_upper not in valid_indices:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid index_type. Must be one of: {', '.join(valid_indices)}"
-            )
-        
+
+        validate_bbox_in_coverage(*bbox_coords)
+
         logger.info(f"Fetching WMS image: bbox={bbox}, date={date}, index={index_type_upper}")
         
         # Get image from Sentinel Hub
@@ -95,52 +98,80 @@ async def get_wms_tile(
     - **date**: Date in YYYY-MM-DD format
     - **index_type**: One of: NDVI, NDWI, NDBI, MOISTURE
     """
+    index_type_upper = validate_index_type(index_type)
+    validate_date(date)
+
+    # Tiles outside coverage: transparent PNG, no Sentinel Hub call
+    tile_bbox = tile_cache_service.tile_to_bbox(z, x, y)
+    if not bbox_intersects_coverage(*tile_bbox):
+        return Response(
+            content=empty_tile_png(),
+            media_type="image/png",
+            headers={
+                "Cache-Control": "public, max-age=604800",
+                "Access-Control-Allow-Origin": "*",
+                "X-Tile-Cache": "OUT_OF_COVERAGE"
+            }
+        )
+
     try:
-        # Convert tile coordinates to bbox
-        import math
-        
-        def tile_to_bbox(z, x, y):
-            """Convert XYZ tile coordinates to lat/lon bbox"""
-            n = 2.0 ** z
-            lon_min = x / n * 360.0 - 180.0
-            lat_max = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / n))))
-            lon_max = (x + 1) / n * 360.0 - 180.0
-            lat_min = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * (y + 1) / n))))
-            return [lon_min, lat_min, lon_max, lat_max]
-        
-        bbox_coords = tile_to_bbox(z, x, y)
-        
-        # Validate index type
-        valid_indices = ["NDVI", "NDWI", "NDBI", "MOISTURE"]
-        index_type_upper = index_type.upper()
-        
-        if index_type_upper not in valid_indices:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid index_type. Must be one of: {', '.join(valid_indices)}"
+        # Try DB cache first — saves a Sentinel Hub request on repeat views
+        cached = await tile_cache_service.get_cached_tile(z, x, y, date, index_type_upper)
+        if cached:
+            return Response(
+                content=cached,
+                media_type="image/png",
+                headers={
+                    "Cache-Control": "public, max-age=86400",
+                    "Access-Control-Allow-Origin": "*",
+                    "X-Tile-Cache": "HIT"
+                }
             )
-        
+
+        # Optionally render from stored pixel_data before hitting Sentinel Hub
+        if settings.PREFER_PIXEL_TILES:
+            pixel_tile = await tile_cache_service.render_tile_from_pixels(
+                z, x, y, date, index_type_upper
+            )
+            if pixel_tile:
+                return Response(
+                    content=pixel_tile,
+                    media_type="image/png",
+                    headers={
+                        "Cache-Control": "public, max-age=86400",
+                        "Access-Control-Allow-Origin": "*",
+                        "X-Tile-Cache": "PIXEL"
+                    }
+                )
+
         logger.info(f"Fetching tile: z={z}, x={x}, y={y}, date={date}, index={index_type_upper}")
-        
-        # Get image from Sentinel Hub
+
         image_data = sentinel_hub_wms_service.get_image(
-            bbox=bbox_coords,
+            bbox=tile_bbox,
             date=date,
             index_type=index_type_upper,
             width=256,
             height=256
         )
-        
-        # Return PNG tile
+
+        # Cache failures must not break tile serving
+        try:
+            await tile_cache_service.store_tile(z, x, y, date, index_type_upper, image_data)
+        except Exception as e:
+            logger.warning(f"Failed to cache tile z={z}/{x}/{y}: {e}")
+
         return Response(
             content=image_data,
             media_type="image/png",
             headers={
                 "Cache-Control": "public, max-age=86400",
-                "Access-Control-Allow-Origin": "*"
+                "Access-Control-Allow-Origin": "*",
+                "X-Tile-Cache": "MISS"
             }
         )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching tile: {str(e)}")
         raise HTTPException(
