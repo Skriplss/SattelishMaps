@@ -10,4 +10,16 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // maplibre and chart.js dominate bundle size — split them so the
+        // app shell loads and caches independently of the heavy libs
+        manualChunks: {
+          maplibre: ['maplibre-gl'],
+          charts: ['chart.js', 'react-chartjs-2'],
+        },
+      },
+    },
+  },
 })
