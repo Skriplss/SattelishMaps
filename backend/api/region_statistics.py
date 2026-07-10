@@ -7,6 +7,7 @@ import logging
 
 from utils.response_formatter import success_response
 from utils.error_handlers import NotFoundError, SupabaseError
+from utils.validation import validate_index_type, validate_date
 from services.supabase_service import supabase_service
 
 logger = logging.getLogger(__name__)
@@ -28,17 +29,10 @@ async def get_region_statistics(
     - **index_type**: One of: NDVI, NDWI, NDBI, MOISTURE
     - **region_name**: Optional filter by region name
     """
+    index_type_upper = validate_index_type(index_type)
+    validate_date(date)
+
     try:
-        # Validate index_type
-        valid_indices = ["NDVI", "NDWI", "NDBI", "MOISTURE"]
-        index_type_upper = index_type.upper()
-        
-        if index_type_upper not in valid_indices:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid index_type. Must be one of: {', '.join(valid_indices)}"
-            )
-        
         logger.info(f"Fetching region statistics: date={date}, index={index_type_upper}, region={region_name}")
         
         # Get data from Supabase
