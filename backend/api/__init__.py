@@ -1,2 +1,2 @@
 # API routers exports
-from . import satellite, statistics, indices, region_statistics, wms
+from . import statistics, region_statistics, wms, sentinelhub, tiles
