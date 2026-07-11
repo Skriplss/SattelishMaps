@@ -24,8 +24,14 @@ class Settings(BaseSettings):
     SCHEDULER_ENABLED: bool = True
     SCHEDULER_INTERVAL_HOURS: int = 4
     DEFAULT_SEARCH_BOUNDS: str = "POLYGON((17.50 48.30, 17.70 48.30, 17.70 48.45, 17.50 48.45, 17.50 48.30))"  # Trnava, Slovakia
+    DEFAULT_REGION_NAME: str = "Trnava"
     DEFAULT_CLOUD_MAX: float = 30.0
     PROCESS_HISTORICAL_DATA: bool = False
+
+    # Coverage — the app serves Slovakia only. Requests outside this bbox
+    # are rejected (or served as empty tiles) to protect Sentinel Hub quota.
+    # Format: min_lon,min_lat,max_lon,max_lat
+    COVERAGE_BBOX: str = "16.8,47.7,22.6,49.7"
     
     # Supabase
     SUPABASE_URL: str
@@ -40,6 +46,11 @@ class Settings(BaseSettings):
     SH_CLIENT_ID: str = ""
     SH_CLIENT_SECRET: str = ""
     
+    # Tiles
+    # When True, /wms/tile tries rendering from stored pixel_data before
+    # calling Sentinel Hub (quota-free, but limited to fetched areas/dates)
+    PREFER_PIXEL_TILES: bool = False
+
     # Cache
     CACHE_TTL: int = 3600  # 1 hour
     CACHE_MAX_SIZE: int = 1000
