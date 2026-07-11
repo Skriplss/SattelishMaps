@@ -1,17 +1,13 @@
-import os
 import logging
-from datetime import datetime, date
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple
 
 from sentinelhub import (
     SHConfig,
     SentinelHubStatistical,
     DataCollection,
-    Geometry,
     CRS,
     BBox
 )
-from shapely.geometry import Polygon
 
 logger = logging.getLogger(__name__)
 
@@ -106,13 +102,7 @@ class SentinelHubService:
             raise Exception("SentinelHub credentials not configured")
 
         try:
-            # Create Geometry
-            # Note: Statistical API typically requires a geometry (Polygon) or specific BBox object
             bbox = BBox(bbox=bbox_coords, crs=CRS.WGS84)
-            geometry = Geometry(bbox.geometry, crs=CRS.WGS84)
-
-
-
 
             # Convert resolution from meters to degrees (approx) if needed
             # 1 degree ~ 111km = 111000m at equator
