@@ -1,10 +1,9 @@
 """
 Custom exceptions and error handlers
 """
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,28 +15,13 @@ class SatelliteDataError(Exception):
     pass
 
 
-class CopernicusAPIError(SatelliteDataError):
-    """Copernicus API related errors"""
-    pass
-
-
 class SupabaseError(SatelliteDataError):
     """Supabase database errors"""
     pass
 
 
-class ImageProcessingError(SatelliteDataError):
-    """Image processing errors"""
-    pass
-
-
 class NotFoundError(SatelliteDataError):
     """Resource not found"""
-    pass
-
-
-class ValidationError(SatelliteDataError):
-    """Validation errors"""
     pass
 
 
@@ -80,21 +64,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             message="Invalid request parameters",
             status_code=422,
             details={"errors": errors}
-        )
-    )
-
-
-async def copernicus_api_exception_handler(request: Request, exc: CopernicusAPIError):
-    """Handle Copernicus API errors"""
-    logger.error(f"Copernicus API error: {str(exc)}")
-    
-    return JSONResponse(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content=format_error_response(
-            error="copernicus_api_error",
-            message="Failed to fetch data from Copernicus API",
-            status_code=503,
-            details={"reason": str(exc)}
         )
     )
 
@@ -145,7 +114,6 @@ async def general_exception_handler(request: Request, exc: Exception):
 def register_exception_handlers(app):
     """Register all exception handlers with FastAPI app"""
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(CopernicusAPIError, copernicus_api_exception_handler)
     app.add_exception_handler(SupabaseError, supabase_exception_handler)
     app.add_exception_handler(NotFoundError, not_found_exception_handler)
     app.add_exception_handler(Exception, general_exception_handler)
