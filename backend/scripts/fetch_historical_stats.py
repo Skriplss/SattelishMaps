@@ -4,7 +4,7 @@ import sys
 import logging
 import asyncio
 from datetime import datetime, timedelta
-from typing import List, Dict
+from typing import List
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -34,10 +34,6 @@ async def fetch_and_save_stats(region_name: str, bbox: List[float]):
     time_interval = (start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
     
     try:
-        # Clear existing stats for this region to avoid duplicates
-        logger.info(f"Cleaning up old stats for {region_name}...")
-        supabase_service.client.table('region_statistics').delete().eq('region_name', region_name).execute()
-
         # Fetch stats from Sentinel Hub
         logger.info(f"Fetching stats for {region_name} from {time_interval[0]} to {time_interval[1]}")
         stats = sentinelhub_service.fetch_statistics(
@@ -45,41 +41,32 @@ async def fetch_and_save_stats(region_name: str, bbox: List[float]):
             time_interval=time_interval,
             resolution=100  # 100m resolution is enough for regional stats
         )
-        
-        # Save NDVI
-        ndvi_data = stats.get("ndvi", [])
-        logger.info(f"Found {len(ndvi_data)} NDVI records for {region_name}")
-        
-        for record in ndvi_data:
-            supabase_service.insert_region_statistics({
-                "region_name": region_name,
-                "date": record["date"],
-                "index_type": "NDVI",
-                "mean": record["mean"],
-                "min": record["min"],
-                "max": record["max"],
-                "std": record["stDev"],
-                "sample_count": record["sample_count"],
-                # "bbox": f"POLYGON(({bbox[0]} {bbox[1]}, {bbox[2]} {bbox[1]}, {bbox[2]} {bbox[3]}, {bbox[0]} {bbox[3]}, {bbox[0]} {bbox[1]}))"
-            })
-            
-        # Save NDWI
-        ndwi_data = stats.get("ndwi", [])
-        logger.info(f"Found {len(ndwi_data)} NDWI records for {region_name}")
-        
-        for record in ndwi_data:
-            supabase_service.insert_region_statistics({
-                "region_name": region_name,
-                "date": record["date"],
-                "index_type": "NDWI",
-                "mean": record["mean"],
-                "min": record["min"],
-                "max": record["max"],
-                "std": record["stDev"],
-                "sample_count": record["sample_count"]
-            })
-            
-        logger.info(f"✅ Completed {region_name}")
+
+        bbox_ewkt = (
+            f"SRID=4326;POLYGON(({bbox[0]} {bbox[1]}, {bbox[2]} {bbox[1]}, "
+            f"{bbox[2]} {bbox[3]}, {bbox[0]} {bbox[3]}, {bbox[0]} {bbox[1]}))"
+        )
+
+        rows = []
+        for index_type in ("NDVI", "NDWI"):
+            records = stats.get(index_type.lower(), [])
+            logger.info(f"Found {len(records)} {index_type} records for {region_name}")
+
+            for record in records:
+                rows.append({
+                    "region_name": region_name,
+                    "date": record["date"].split("T")[0],
+                    "index_type": index_type,
+                    "bbox": bbox_ewkt,
+                    "mean": record["mean"],
+                    "min": record["min"],
+                    "max": record["max"],
+                    "std": record["stDev"],
+                    "sample_count": record["sample_count"]
+                })
+
+        saved = supabase_service.upsert_region_statistics(rows)
+        logger.info(f"✅ Completed {region_name}: {saved} rows")
         
     except Exception as e:
         logger.error(f"Failed to process {region_name}: {e}")
